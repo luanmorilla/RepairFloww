@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. USUÁRIOS E ASSISTÊNCIAS (ONBOARDING)
+// ==========================================
+model Shop {
+  id               String   @id @default(cuid())
+  name             String
+  logo             String?  
+  phone            String?
+  address          String?
+  instagram        String?
+  standardWarranty Int      @default(90) 
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users            User[]
+  customers        Customer[]
+  serviceOrders    ServiceOrder[]
+  stockItems       StockItem[]
+  transactions     Transaction[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(TECHNICIAN)
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  createdAt DateTime @default(now())
+
+  serviceOrders ServiceOrder[] 
+}
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+  ATTENDANT
+}
+
+// ==========================================
+// 2. CLIENTES E APARELHOS
+// ==========================================
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  document  String?  
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  createdAt DateTime @default(now())
+
+  devices       Device[]
+  serviceOrders ServiceOrder[]
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  brand      String   
+  model      String   
+  imei       String?
+  password   String?  
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  
+  serviceOrders ServiceOrder[]
+}
+
+// ==========================================
+// 3. ORDENS DE SERVIÇO (O CORAÇÃO DO SISTEMA)
+// ==========================================
+model ServiceOrder {
+  id             String   @id @default(cuid())
+  orderNumber    Int      @default(autoincrement()) 
+  status         OsStatus @default(RECEIVED)
+  defect         String   @db.Text
+  notes          String?  @db.Text
+  checklistIn    Json?    
+  checklistOut   Json?    
+  photos         String[] 
+  
+  estimatedCost  Float    @default(0) 
+  servicePrice   Float    @default(0) 
+  totalPrice     Float    @default(0) 
+  profit         Float    @default(0) 
+  
+  deadline       DateTime?
+  warrantyDays   Int      @default(90)
+  
+  deviceId       String
+  device         Device   @relation(fields: [deviceId], references: [id])
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  shopId         String
+  shop           Shop     @relation(fields: [shopId], references: [id])
+  technicianId   String?
+  technician     User?    @relation(fields: [technicianId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum OsStatus {
+  RECEIVED          
+  DIAGNOSING        
+  AWAITING_APPROVAL 
+  APPROVED          
+  IN_REPAIR         
+  READY             
+  DELIVERED         
+  CANCELED          
+}
+
+// ==========================================
+// 4. ESTOQUE E VENDAS RÁPIDAS
+// ==========================================
+model StockItem {
+  id          String   @id @default(cuid())
+  name        String
+  category    Category 
+  barcode     String?
+  quantity    Int      @default(0)
+  minQuantity Int      @default(2)
+  costPrice   Float
+  sellPrice   Float
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id])
+}
+
+enum Category {
+  PART
+  ACCESSORY
+  DEVICE
+  OTHER
+}
+
+// ==========================================
+// 5. FINANCEIRO
+// ==========================================
+model Transaction {
+  id          String   @id @default(cuid())
+  type        TransType
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id])
+}
+
+enum TransType {
+  INCOME
+  EXPENSE
+}
