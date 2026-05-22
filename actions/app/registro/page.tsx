@@ -12,7 +12,6 @@ import { Rocket, BarChart3, Users, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// Molde de validação 
 const formSchema = z.object({
   name: z.string().min(3, "O nome precisa ter pelo menos 3 letras"),
   shopName: z.string().min(3, "Digite o nome da assistência"),
@@ -31,7 +30,6 @@ export default function RegisterPage() {
     resolver: zodResolver(formSchema),
   });
 
-  // ESSA É A FUNÇÃO QUE IMPEDE A TELA DE PISCAR
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
     setApiError(null);
@@ -49,8 +47,8 @@ export default function RegisterPage() {
         throw new Error(result.message || "Erro ao criar conta.");
       }
 
-      // Sucesso! Redireciona para o login
-      router.push("/login?sucesso=true");
+      // ✅ Após cadastro vai direto para escolher o plano
+      router.push("/planos");
 
     } catch (error: any) {
       setApiError(error.message);
@@ -70,19 +68,17 @@ export default function RegisterPage() {
           
           <div className="space-y-3 text-center lg:text-left flex flex-col items-center lg:items-start">
             <div className="inline-flex items-center rounded-full border border-zinc-800/80 bg-zinc-900/50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-2">
-              Comece agora gratuitamente
+              Comece agora
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-zinc-100">Crie sua conta</h1>
           </div>
 
-          {/* Banner de erro (se o email já existir, por exemplo) */}
           {apiError && (
             <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm font-semibold text-red-400">
               {apiError}
             </div>
           )}
           
-          {/* AQUI ESTÁ O SEGREDO: onSubmit={handleSubmit(onSubmit)} */}
           <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 pt-2">
             
             <div className="space-y-2 group">
@@ -111,7 +107,7 @@ export default function RegisterPage() {
             
             <div className="pt-4 space-y-5">
               <Button type="submit" disabled={isLoading} className="w-full h-12 rounded-xl text-sm font-bold bg-zinc-100 text-zinc-950 hover:bg-white transition-all flex items-center justify-center gap-2">
-                {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Criando...</> : "Criar minha Conta Premium"}
+                {isLoading ? <><Loader2 className="h-5 w-5 animate-spin" /> Criando...</> : "Criar minha Conta"}
               </Button>
 
               <div className="text-center text-sm font-medium text-zinc-500">
@@ -123,7 +119,7 @@ export default function RegisterPage() {
         </motion.div>
       </div>
 
-      {/* LADO DIREITO: ESTRATÉGIA VISUAL */}
+      {/* LADO DIREITO */}
       <div className="hidden lg:flex relative w-[55%] flex-col justify-center items-center bg-[#09090b] border-l border-zinc-900 overflow-hidden px-12">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
         <div className="absolute top-[10%] left-[10%] w-[400px] h-[400px] rounded-full bg-blue-600/10 blur-[100px]"></div>

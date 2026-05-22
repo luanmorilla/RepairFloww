@@ -11,15 +11,22 @@ datasource db {
 // 1. USUÁRIOS E ASSISTÊNCIAS (ONBOARDING)
 // ==========================================
 model Shop {
-  id               String   @id @default(cuid())
+  id               String      @id @default(cuid())
   name             String
   logo             String?  
   phone            String?
   address          String?
   instagram        String?
-  standardWarranty Int      @default(90) 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  standardWarranty Int         @default(90) 
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  // ── PLANO / ASSINATURA ──
+  planStatus         String    @default("inactive") // inactive | active | expired
+  planType           String?                         // mensal | trimestral
+  planExpiresAt      DateTime?
+  stripeCustomerId   String?
+  stripeSubscriptionId String?
 
   users            User[]
   customers        Customer[]
@@ -82,20 +89,20 @@ model DeviceModel {
   id          String @id @default(uuid())
   brand       String
   model       String
-  marketValue Float  // Alterado para Float para evitar erros de tipo no Frontend
+  marketValue Float
 }
 
 model RepairType {
   id         String @id @default(uuid())
-  category   String // Ex: ANDROID, IPHONE, GERAIS
-  name       String // Ex: Troca de tela
-  difficulty String // Ex: Baixa, Média, Alta, Muito Alta
+  category   String
+  name       String
+  difficulty String
   
-  serviceOrders ServiceOrder[] // Histórico de OS com este serviço
+  serviceOrders ServiceOrder[]
 }
 
 // ==========================================
-// 4. ORDENS DE SERVIÇO (O CORAÇÃO DO SISTEMA)
+// 4. ORDENS DE SERVIÇO
 // ==========================================
 model ServiceOrder {
   id             String   @id @default(cuid())
@@ -115,7 +122,6 @@ model ServiceOrder {
   deadline       DateTime?
   warrantyDays   Int      @default(90)
   
-  // Relacionamentos físicos
   deviceId       String
   device         Device   @relation(fields: [deviceId], references: [id])
   customerId     String
@@ -125,7 +131,6 @@ model ServiceOrder {
   technicianId   String?
   technician     User?    @relation(fields: [technicianId], references: [id])
 
-  // Relacionamento com o Catálogo (Histórico do que foi feito)
   repairTypeId   String?
   repairType     RepairType? @relation(fields: [repairTypeId], references: [id])
 
