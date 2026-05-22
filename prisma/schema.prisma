@@ -76,7 +76,26 @@ model Device {
 }
 
 // ==========================================
-// 3. ORDENS DE SERVIÇO (O CORAÇÃO DO SISTEMA)
+// 3. CATÁLOGO INTELIGENTE (PRECIFICAÇÃO)
+// ==========================================
+model DeviceModel {
+  id          String @id @default(uuid())
+  brand       String
+  model       String
+  marketValue Float  // Alterado para Float para evitar erros de tipo no Frontend
+}
+
+model RepairType {
+  id         String @id @default(uuid())
+  category   String // Ex: ANDROID, IPHONE, GERAIS
+  name       String // Ex: Troca de tela
+  difficulty String // Ex: Baixa, Média, Alta, Muito Alta
+  
+  serviceOrders ServiceOrder[] // Histórico de OS com este serviço
+}
+
+// ==========================================
+// 4. ORDENS DE SERVIÇO (O CORAÇÃO DO SISTEMA)
 // ==========================================
 model ServiceOrder {
   id             String   @id @default(cuid())
@@ -96,6 +115,7 @@ model ServiceOrder {
   deadline       DateTime?
   warrantyDays   Int      @default(90)
   
+  // Relacionamentos físicos
   deviceId       String
   device         Device   @relation(fields: [deviceId], references: [id])
   customerId     String
@@ -105,23 +125,27 @@ model ServiceOrder {
   technicianId   String?
   technician     User?    @relation(fields: [technicianId], references: [id])
 
+  // Relacionamento com o Catálogo (Histórico do que foi feito)
+  repairTypeId   String?
+  repairType     RepairType? @relation(fields: [repairTypeId], references: [id])
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
 
 enum OsStatus {
-  RECEIVED          
-  DIAGNOSING        
+  RECEIVED         
+  DIAGNOSING       
   AWAITING_APPROVAL 
-  APPROVED          
+  APPROVED         
   IN_REPAIR         
   READY             
   DELIVERED         
-  CANCELED          
+  CANCELED         
 }
 
 // ==========================================
-// 4. ESTOQUE E VENDAS RÁPIDAS
+// 5. ESTOQUE E VENDAS RÁPIDAS
 // ==========================================
 model StockItem {
   id          String   @id @default(cuid())
@@ -144,16 +168,16 @@ enum Category {
 }
 
 // ==========================================
-// 5. FINANCEIRO
+// 6. FINANCEIRO
 // ==========================================
 model Transaction {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   type        TransType
   amount      Float
   description String
-  date        DateTime @default(now())
+  date        DateTime  @default(now())
   shopId      String
-  shop        Shop     @relation(fields: [shopId], references: [id])
+  shop        Shop      @relation(fields: [shopId], references: [id])
 }
 
 enum TransType {
