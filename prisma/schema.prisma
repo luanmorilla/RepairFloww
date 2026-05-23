@@ -21,18 +21,17 @@ model Shop {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  // ── PLANO / ASSINATURA ──
-  planStatus         String    @default("inactive") // inactive | active | expired
-  planType           String?                         // mensal | trimestral
-  planExpiresAt      DateTime?
-  stripeCustomerId   String?
+  planStatus           String    @default("inactive")
+  planType             String?
+  planExpiresAt        DateTime?
+  stripeCustomerId     String?
   stripeSubscriptionId String?
 
-  users            User[]
-  customers        Customer[]
-  serviceOrders    ServiceOrder[]
-  stockItems       StockItem[]
-  transactions     Transaction[]
+  users         User[]
+  customers     Customer[]
+  serviceOrders ServiceOrder[]
+  stockItems    StockItem[]
+  transactions  Transaction[]
 }
 
 model User {
@@ -45,7 +44,7 @@ model User {
   shop      Shop     @relation(fields: [shopId], references: [id])
   createdAt DateTime @default(now())
 
-  serviceOrders ServiceOrder[] 
+  serviceOrders ServiceOrder[]
 }
 
 enum Role {
@@ -61,7 +60,7 @@ model Customer {
   id        String   @id @default(cuid())
   name      String
   phone     String
-  document  String?  
+  document  String?
   shopId    String
   shop      Shop     @relation(fields: [shopId], references: [id])
   createdAt DateTime @default(now())
@@ -72,13 +71,13 @@ model Customer {
 
 model Device {
   id         String   @id @default(cuid())
-  brand      String   
-  model      String   
+  brand      String
+  model      String
   imei       String?
-  password   String?  
+  password   String?
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
-  
+
   serviceOrders ServiceOrder[]
 }
 
@@ -97,7 +96,7 @@ model RepairType {
   category   String
   name       String
   difficulty String
-  
+
   serviceOrders ServiceOrder[]
 }
 
@@ -105,48 +104,48 @@ model RepairType {
 // 4. ORDENS DE SERVIÇO
 // ==========================================
 model ServiceOrder {
-  id             String   @id @default(cuid())
-  orderNumber    Int      @default(autoincrement()) 
-  status         OsStatus @default(RECEIVED)
-  defect         String   @db.Text
-  notes          String?  @db.Text
-  checklistIn    Json?    
-  checklistOut   Json?    
-  photos         String[] 
-  
-  estimatedCost  Float    @default(0) 
-  servicePrice   Float    @default(0) 
-  totalPrice     Float    @default(0) 
-  profit         Float    @default(0) 
-  
-  deadline       DateTime?
-  warrantyDays   Int      @default(90)
-  
-  deviceId       String
-  device         Device   @relation(fields: [deviceId], references: [id])
-  customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
-  shopId         String
-  shop           Shop     @relation(fields: [shopId], references: [id])
-  technicianId   String?
-  technician     User?    @relation(fields: [technicianId], references: [id])
+  id            String   @id @default(cuid())
+  orderNumber   Int      @default(autoincrement())
+  status        OsStatus @default(RECEIVED)
+  defect        String   @db.Text
+  notes         String?  @db.Text
+  checklistIn   Json?
+  checklistOut  Json?
+  photos        String[]
 
-  repairTypeId   String?
-  repairType     RepairType? @relation(fields: [repairTypeId], references: [id])
+  estimatedCost Float @default(0)
+  servicePrice  Float @default(0)
+  totalPrice    Float @default(0)
+  profit        Float @default(0)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  deadline     DateTime?
+  warrantyDays Int      @default(90)
+
+  deviceId     String
+  device       Device   @relation(fields: [deviceId], references: [id])
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  shopId       String
+  shop         Shop     @relation(fields: [shopId], references: [id])
+  technicianId String?
+  technician   User?    @relation(fields: [technicianId], references: [id])
+
+  repairTypeId String?
+  repairType   RepairType? @relation(fields: [repairTypeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum OsStatus {
-  RECEIVED         
-  DIAGNOSING       
-  AWAITING_APPROVAL 
-  APPROVED         
-  IN_REPAIR         
-  READY             
-  DELIVERED         
-  CANCELED         
+  RECEIVED
+  DIAGNOSING
+  AWAITING_APPROVAL
+  APPROVED
+  IN_REPAIR
+  READY
+  DELIVERED
+  CANCELED
 }
 
 // ==========================================
@@ -155,7 +154,7 @@ enum OsStatus {
 model StockItem {
   id          String   @id @default(cuid())
   name        String
-  category    Category 
+  category    Category
   barcode     String?
   quantity    Int      @default(0)
   minQuantity Int      @default(2)
@@ -188,4 +187,16 @@ model Transaction {
 enum TransType {
   INCOME
   EXPENSE
+}
+
+// ==========================================
+// 7. RECUPERAÇÃO DE SENHA
+// ==========================================
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
