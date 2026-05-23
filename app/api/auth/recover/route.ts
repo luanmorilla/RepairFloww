@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -8,42 +9,51 @@ export async function POST(request: Request) {
   try {
     const { email } = await request.json();
 
-    // 1. Verifica se o e-mail realmente existe no nosso banco Neon
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     });
 
     if (!user) {
-      return NextResponse.json({ error: "E-mail não encontrado em nosso sistema." }, { status: 404 });
+      return NextResponse.json({ error: "E-mail não encontrado." }, { status: 404 });
     }
 
-    // 2. Cria um link (por enquanto direto, depois colocaremos segurança avançada)
-    const resetLink = `http://localhost:3000/login`;
+    await prisma.passwordResetToken.updateMany({
+      where: { email: email.toLowerCase(), used: false },
+      data: { used: true }
+    });
 
-    // 3. Envia o e-mail de verdade usando o Resend!
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await prisma.passwordResetToken.create({
+      data: { token, email: email.toLowerCase(), expiresAt }
+    });
+
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://repair-floww.vercel.app";
+    const resetLink = `${appUrl}/reset-password?token=${token}`;
+
     await resend.emails.send({
       from: "RepairFlow <onboarding@resend.dev>",
-      to: email, // ATENÇÃO: No plano grátis, isso SÓ envia para o e-mail da sua própria conta do Resend
+      to: email,
       subject: "Recuperação de Senha - RepairFlow",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e4e4e7; border-radius: 12px;">
-          <h2 style="color: #18181b; margin-bottom: 20px;">Recuperação de Senha</h2>
-          <p style="color: #52525b; line-height: 1.6; font-size: 16px;">Olá, <strong>${user.name}</strong>!</p>
-          <p style="color: #52525b; line-height: 1.6; font-size: 16px;">Recebemos um pedido para redefinir a senha da sua conta no RepairFlow.</p>
+          <h2 style="color: #18181b;">Recuperação de Senha</h2>
+          <p style="color: #52525b; font-size: 16px;">Olá, <strong>${user.name}</strong>!</p>
+          <p style="color: #52525b; font-size: 16px;">Clique no botão abaixo para redefinir sua senha. O link expira em <strong>1 hora</strong>.</p>
           <div style="text-align: center; margin: 40px 0;">
-            <a href="${resetLink}" style="background-color: #18181b; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
-              Acessar Plataforma
+            <a href="${resetLink}" style="background-color: #18181b; color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+              Redefinir Senha
             </a>
           </div>
-          <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 30px 0;" />
-          <p style="color: #a1a1aa; font-size: 12px; text-align: center;">Se você não pediu isso, apenas ignore este e-mail.</p>
+          <p style="color: #a1a1aa; font-size: 12px; text-align: center;">Se você não pediu isso, ignore este e-mail. O link expira automaticamente.</p>
         </div>
       `
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("ERRO RESEND:", error);
-    return NextResponse.json({ error: "Erro ao tentar enviar o e-mail." }, { status: 500 });
+    console.error("ERRO RECOVER:", error);
+    return NextResponse.json({ error: "Erro ao enviar e-mail." }, { status: 500 });
   }
 }
