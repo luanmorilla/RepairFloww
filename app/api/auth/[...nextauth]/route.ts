@@ -9,7 +9,7 @@ const handler = NextAuth({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Senha", type: "password" }
+        password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -17,45 +17,64 @@ const handler = NextAuth({
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase() }
+          where: { email: credentials.email.toLowerCase() },
         });
 
-        if (!user) {
-          throw new Error("E-mail não encontrado em nosso sistema.");
-        }
+        if (!user) throw new Error("E-mail não encontrado em nosso sistema.");
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
-          throw new Error("Senha incorreta. Tente novamente.");
-        }
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+        if (!isPasswordValid) throw new Error("Senha incorreta. Tente novamente.");
 
         return {
           id: user.id,
           name: user.name,
           email: user.email,
-          shopId: user.shopId,  // ✅ já estava aqui
+          shopId: user.shopId,
         };
-      }
-    })
+      },
+    }),
   ],
 
-  // ✅ ISSO QUE FALTAVA — salva shopId no token e expõe na sessão
   callbacks: {
     async jwt({ token, user }) {
+      // Só roda no login — salva shopId e id no token
       if (user) {
         token.shopId = (user as any).shopId;
         token.id = user.id;
       }
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).shopId = token.shopId;
         (session.user as any).id = token.id;
+        (session.user as any).shopId = token.shopId;
       }
+
+      // ── Busca o plano atual direto do banco a cada request ──
+      // Garante que após pagamento o status reflete imediatamente
+      if (token.shopId) {
+        const shop = await prisma.shop.findUnique({
+          where: { id: token.shopId as string },
+          select: {
+            planStatus: true,
+            planType: true,
+            planExpiresAt: true,
+          },
+        });
+
+        if (shop) {
+          (session.user as any).planStatus = shop.planStatus;
+          (session.user as any).planType = shop.planType;
+          (session.user as any).planExpiresAt = shop.planExpiresAt;
+        }
+      }
+
       return session;
-    }
+    },
   },
 
   pages: {

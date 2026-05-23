@@ -42,6 +42,10 @@ export default function NewOSPage() {
 
   const [partCost, setPartCost] = useState<string>("");
 
+  // ── Desconto ──────────────────────────────────────────────────────────────
+  const [discountType, setDiscountType] = useState<"%" | "R$">("%");
+  const [discountValue, setDiscountValue] = useState<string>("");
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -61,8 +65,8 @@ export default function NewOSPage() {
     loadData();
   }, []);
 
-  // Motor de precificação ao vivo
-  let liveSuggestedPrice = 0;
+  // ── Motor de precificação ─────────────────────────────────────────────────
+  let subtotal = 0;
   let riskValue = 0;
   let maoDeObra = 0;
 
@@ -74,8 +78,16 @@ export default function NewOSPage() {
 
     const riskRate = selectedDevice.marketValue > 5000 ? 0.06 : 0.04;
     riskValue = selectedDevice.marketValue * riskRate;
-    liveSuggestedPrice = maoDeObra + (Number(partCost) || 0) + riskValue;
+    subtotal = maoDeObra + (Number(partCost) || 0) + riskValue;
   }
+
+  // ── Cálculo do desconto ───────────────────────────────────────────────────
+  const discountRaw = Number(discountValue) || 0;
+  const discountAmount =
+    discountType === "%"
+      ? Math.min((subtotal * discountRaw) / 100, subtotal)
+      : Math.min(discountRaw, subtotal);
+  const finalPrice = subtotal - discountAmount;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -86,7 +98,6 @@ export default function NewOSPage() {
       return;
     }
 
-    // ✅ CORREÇÃO: pega shopId da sessão real do usuário logado
     const shopId = (session?.user as any)?.shopId;
     if (!shopId) {
       setError("Sessão inválida. Faça login novamente.");
@@ -105,6 +116,8 @@ export default function NewOSPage() {
       repairTypeId: selectedRepair.id,
       defectDescription: formData.get("defectDescription"),
       partCost: Number(partCost),
+      discountAmount,
+      finalPrice,
     };
 
     try {
@@ -125,7 +138,6 @@ export default function NewOSPage() {
           Nova Ordem de Serviço
         </h1>
 
-        {/* ✅ Mostra erros claramente ao usuário */}
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
             ⚠️ {error}
@@ -168,26 +180,25 @@ export default function NewOSPage() {
                 {devices.length === 0 && (
                   <li className="p-3 text-sm text-zinc-500">Carregando aparelhos...</li>
                 )}
-                {devices.length > 0 &&
-                  devices
-                    .filter(
-                      (d) =>
-                        d.model.toLowerCase().includes(searchDevice.toLowerCase()) ||
-                        d.brand.toLowerCase().includes(searchDevice.toLowerCase())
-                    )
-                    .map((d) => (
-                      <li
-                        key={d.id}
-                        className="p-3 hover:bg-blue-600 cursor-pointer text-sm"
-                        onMouseDown={() => {
-                          setSearchDevice(`${d.brand} ${d.model}`);
-                          setSelectedDevice(d);
-                          setShowDeviceSuggestions(false);
-                        }}
-                      >
-                        {d.brand} {d.model}
-                      </li>
-                    ))}
+                {devices
+                  .filter(
+                    (d) =>
+                      d.model.toLowerCase().includes(searchDevice.toLowerCase()) ||
+                      d.brand.toLowerCase().includes(searchDevice.toLowerCase())
+                  )
+                  .map((d) => (
+                    <li
+                      key={d.id}
+                      className="p-3 hover:bg-blue-600 cursor-pointer text-sm"
+                      onMouseDown={() => {
+                        setSearchDevice(`${d.brand} ${d.model}`);
+                        setSelectedDevice(d);
+                        setShowDeviceSuggestions(false);
+                      }}
+                    >
+                      {d.brand} {d.model}
+                    </li>
+                  ))}
               </ul>
             )}
           </div>
@@ -262,6 +273,7 @@ export default function NewOSPage() {
           {selectedDevice && selectedRepair && (
             <div className="bg-emerald-900/20 border border-emerald-500/30 p-4 rounded-xl space-y-2 mt-6">
               <h3 className="text-emerald-500 font-bold mb-2">Resumo do Orçamento Sugerido</h3>
+
               <div className="flex justify-between text-sm text-zinc-400">
                 <span>Mão de obra ({selectedRepair.difficulty}):</span>
                 <span>R$ {maoDeObra.toFixed(2)}</span>
@@ -274,9 +286,50 @@ export default function NewOSPage() {
                 <span>Custo da Peça:</span>
                 <span>R$ {(Number(partCost) || 0).toFixed(2)}</span>
               </div>
+
+              {/* ── Subtotal ── */}
+              <div className="flex justify-between text-sm text-zinc-400 border-t border-emerald-500/20 pt-2">
+                <span>Subtotal:</span>
+                <span>R$ {subtotal.toFixed(2)}</span>
+              </div>
+
+              {/* ── Campo de desconto ── */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-xs text-zinc-500 font-medium">Desconto (opcional)</label>
+                <div className="flex gap-2">
+                  {/* Botão toggle % / R$ */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDiscountType((prev) => (prev === "%" ? "R$" : "%"));
+                      setDiscountValue("");
+                    }}
+                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm font-bold text-zinc-300 transition w-14 shrink-0"
+                  >
+                    {discountType}
+                  </button>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={discountType === "%" ? "100" : undefined}
+                    step="0.01"
+                    placeholder={discountType === "%" ? "Ex: 10" : "Ex: 50"}
+                    className="bg-zinc-900 border-zinc-800 flex-1"
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                  />
+                </div>
+                {discountAmount > 0 && (
+                  <p className="text-xs text-orange-400">
+                    − R$ {discountAmount.toFixed(2)} de desconto aplicado
+                  </p>
+                )}
+              </div>
+
+              {/* ── Preço final ── */}
               <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-emerald-500/30 mt-2">
-                <span>Preço Final Sugerido:</span>
-                <span className="text-emerald-400">R$ {liveSuggestedPrice.toFixed(2)}</span>
+                <span>Preço Final{discountAmount > 0 ? " (c/ desconto)" : ""}:</span>
+                <span className="text-emerald-400">R$ {finalPrice.toFixed(2)}</span>
               </div>
             </div>
           )}
