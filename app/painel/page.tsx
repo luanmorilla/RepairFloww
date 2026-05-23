@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { OsTable } from "@/components/dashboard/os-table";
 import { StockTab } from "@/components/dashboard/stock-tab";
 import { VendaRapidaModal } from "@/components/dashboard/venda-rapida-modal";
+import { FaturamentoModal } from "@/components/dashboard/FaturamentoModal"; // ← NOVO
 import { fetchDashboardData } from "@/actions/dashboard-actions";
 import { getShopSettings, updateShopSettings } from "@/actions/shop-actions";
 import { useRouter } from "next/navigation";
@@ -330,7 +331,7 @@ function ImeiTab() {
         <div className="space-y-2">
           {linksConsulta.map((link) => (
             <a key={link.nome} href={link.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-between p-3.5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 rounded-xl transition-all group">
+              className="flex items-center justify-between p-3.5 bg-white/2 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-xl transition-all group">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold text-white/20 bg-white/5 px-1.5 py-0.5 rounded font-mono">{link.badge}</span>
                 <div>
@@ -357,8 +358,9 @@ function ImeiTab() {
 // ─────────────────────────────────────────
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [stats, setStats] = useState({ total: 0, emReparo: 0, faturamento: 0 });
+  const [stats, setStats] = useState({ total: 0, emReparo: 0, prontas: 0, atrasadas: 0, faturamento: 0 });
   const [vendaModal, setVendaModal] = useState(false);
+  const [faturamentoModal, setFaturamentoModal] = useState(false); // ← NOVO
   const { data: session } = useSession();
   const router = useRouter();
   const shopId = (session?.user as any)?.shopId;
@@ -390,7 +392,7 @@ export default function DashboardPage() {
       iconBg: "bg-blue-500/10",
       iconColor: "text-blue-400",
       accent: "from-blue-500/5 to-transparent",
-      border: "border-blue-500/10",
+      onClick: undefined,
     },
     {
       label: "Em Reparo",
@@ -400,7 +402,7 @@ export default function DashboardPage() {
       iconBg: "bg-violet-500/10",
       iconColor: "text-violet-400",
       accent: "from-violet-500/5 to-transparent",
-      border: "border-violet-500/10",
+      onClick: undefined,
     },
     {
       label: "Faturamento",
@@ -410,8 +412,8 @@ export default function DashboardPage() {
       iconBg: "bg-emerald-500/10",
       iconColor: "text-emerald-400",
       accent: "from-emerald-500/5 to-transparent",
-      border: "border-emerald-500/10",
       valueColor: "text-emerald-400",
+      onClick: () => setFaturamentoModal(true),
     },
   ];
 
@@ -588,8 +590,9 @@ export default function DashboardPage() {
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.06 }}
-                          className={`rf-card p-5 bg-gradient-to-br ${card.accent} relative overflow-hidden`}
-                          style={{ borderColor: `rgba(255,255,255,0.06)` }}
+                          onClick={card.onClick}
+                          style={{ cursor: card.onClick ? "pointer" : "default" }}
+                          className={`rf-card p-5 bg-linear-to-br ${card.accent} relative overflow-hidden ${card.onClick ? "hover:brightness-110 transition-all" : ""}`}
                         >
                           <div className="flex items-start justify-between mb-4">
                             <p className="text-xs text-white/35 font-medium uppercase tracking-wider">{card.label}</p>
@@ -597,7 +600,7 @@ export default function DashboardPage() {
                               <card.icon size={15} className={card.iconColor} />
                             </div>
                           </div>
-                          <p className={`text-2xl font-bold ${card.valueColor || "text-white"} mb-1`}>{card.value}</p>
+                          <p className={`text-2xl font-bold ${"valueColor" in card && card.valueColor ? card.valueColor : "text-white"} mb-1`}>{card.value}</p>
                           <p className="text-xs text-white/20">{card.sub}</p>
                         </motion.div>
                       ))}
@@ -624,7 +627,7 @@ export default function DashboardPage() {
                 )}
 
                 {/* OS */}
-                {activeTab === "os" && shopId && <OsTable shopId={shopId} />}
+                {activeTab === "os" && shopId && <OsTable shopId={shopId} onStatusChange={recarregarStats} />}
                 {activeTab === "os" && !shopId && (
                   <div className="flex items-center justify-center h-48 text-white/20 text-sm">Aguardando sessão...</div>
                 )}
@@ -668,6 +671,15 @@ export default function DashboardPage() {
             shopId={shopId}
             onClose={() => setVendaModal(false)}
             onVenda={(lucro, total) => { handleVendaRealizada(lucro, total); setVendaModal(false); }}
+          />
+        )}
+
+        {/* Modal Faturamento ← NOVO */}
+        {faturamentoModal && shopId && (
+          <FaturamentoModal
+            shopId={shopId}
+            totalGeral={stats.faturamento}
+            onClose={() => setFaturamentoModal(false)}
           />
         )}
       </div>

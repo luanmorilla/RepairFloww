@@ -53,7 +53,6 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
 
         {/* Body */}
         <div className="p-5 space-y-4">
-          {/* Cliente */}
           <div className="flex items-start gap-3">
             <div className="p-2 bg-zinc-900 rounded-lg">
               <User size={16} className="text-zinc-400" />
@@ -68,7 +67,6 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
             </div>
           </div>
 
-          {/* Aparelho */}
           <div className="flex items-start gap-3">
             <div className="p-2 bg-zinc-900 rounded-lg">
               <Smartphone size={16} className="text-zinc-400" />
@@ -87,7 +85,6 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
             </div>
           </div>
 
-          {/* Defeito */}
           <div className="flex items-start gap-3">
             <div className="p-2 bg-zinc-900 rounded-lg">
               <AlertCircle size={16} className="text-zinc-400" />
@@ -103,7 +100,6 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
             </div>
           </div>
 
-          {/* Valor */}
           <div className="flex items-start gap-3">
             <div className="p-2 bg-zinc-900 rounded-lg">
               <DollarSign size={16} className="text-zinc-400" />
@@ -116,7 +112,6 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
             </div>
           </div>
 
-          {/* Datas */}
           <div className="flex items-start gap-3">
             <div className="p-2 bg-zinc-900 rounded-lg">
               <Calendar size={16} className="text-zinc-400" />
@@ -134,7 +129,6 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
             </div>
           </div>
 
-          {/* Observações */}
           {os.notes && (
             <div className="bg-zinc-900 rounded-xl p-3">
               <p className="text-xs text-zinc-500 mb-1">Observações</p>
@@ -147,7 +141,8 @@ function OsModal({ os, onClose }: { os: any; onClose: () => void }) {
   );
 }
 
-export function OsTable({ shopId }: { shopId: string }) {
+// ← onStatusChange: callback para o pai recarregar os stats do dashboard
+export function OsTable({ shopId, onStatusChange }: { shopId: string; onStatusChange?: () => void }) {
   const [osList, setOsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [concluindo, setConcluindo] = useState<string | null>(null);
@@ -178,6 +173,7 @@ export function OsTable({ shopId }: { shopId: string }) {
     try {
       await concluirOS(id, shopId);
       await load();
+      onStatusChange?.(); // ← avisa o dashboard para atualizar os stats
     } catch {
       alert("Erro ao concluir OS.");
     } finally {
@@ -192,6 +188,7 @@ export function OsTable({ shopId }: { shopId: string }) {
     try {
       await iniciarReparo(id);
       await load();
+      onStatusChange?.(); // ← avisa o dashboard para atualizar os stats
     } catch {
       alert("Erro ao iniciar reparo.");
     } finally {
@@ -246,7 +243,6 @@ export function OsTable({ shopId }: { shopId: string }) {
               className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4 space-y-3 cursor-pointer active:bg-zinc-900 transition-colors"
               onClick={() => handleOpenModal(os)}
             >
-              {/* Linha 1: número + status */}
               <div className="flex items-center justify-between">
                 <span className="font-mono text-zinc-400 text-sm font-bold">
                   #{String(os.orderNumber).padStart(4, "0")}
@@ -256,7 +252,6 @@ export function OsTable({ shopId }: { shopId: string }) {
                 </span>
               </div>
 
-              {/* Linha 2: cliente + aparelho */}
               <div>
                 <p className="text-zinc-100 font-semibold text-sm">{os.customer?.name}</p>
                 <p className="text-zinc-500 text-xs mt-0.5">
@@ -264,7 +259,6 @@ export function OsTable({ shopId }: { shopId: string }) {
                 </p>
               </div>
 
-              {/* Linha 3: valor + data */}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-zinc-300 font-bold">
                   R$ {(os.totalPrice || 0).toFixed(2)}
@@ -274,7 +268,6 @@ export function OsTable({ shopId }: { shopId: string }) {
                 </span>
               </div>
 
-              {/* Linha 4: ações */}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={(e) => handleDownloadPdf(e, os.id)}
