@@ -6,7 +6,7 @@ export async function getOsList(shopId: string) {
   return await prisma.serviceOrder.findMany({
     where: { shopId },
     orderBy: { createdAt: "desc" },
-    include: { customer: true, device: true },
+    include: { customer: true, device: true, repairType: true },
   });
 }
 
@@ -18,6 +18,7 @@ export async function getOsById(id: string) {
       device: true,
       technician: true,
       shop: true,
+      repairType: true,
     },
   });
 }
@@ -29,7 +30,6 @@ export async function concluirOS(id: string, shopId: string) {
     include: { shop: true },
   });
 
-  // Registra a transação financeira
   await prisma.transaction.create({
     data: {
       type: "INCOME",
@@ -37,6 +37,16 @@ export async function concluirOS(id: string, shopId: string) {
       description: `OS #${os.orderNumber} concluída`,
       shopId,
     },
+  });
+
+  revalidatePath("/painel");
+  return os;
+}
+
+export async function iniciarReparo(id: string) {
+  const os = await prisma.serviceOrder.update({
+    where: { id },
+    data: { status: "IN_REPAIR" },
   });
 
   revalidatePath("/painel");
