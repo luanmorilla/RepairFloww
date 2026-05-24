@@ -6,11 +6,24 @@ import { prisma } from "@/lib/prisma";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+// Mapeia tipo → priceId no servidor (variáveis sem NEXT_PUBLIC_)
+const PRICE_IDS: Record<string, string> = {
+  mensal: process.env.STRIPE_PRICE_MENSAL!,
+  trimestral: process.env.STRIPE_PRICE_TRIMESTRAL!,
+};
+
 export async function POST(request: Request) {
   try {
-    const { priceId } = await request.json();
-    const session = await getServerSession();
+    const { tipo } = await request.json(); // ← recebe "mensal" ou "trimestral"
+    const priceId = PRICE_IDS[tipo];
 
+    console.log("🟡 [checkout] tipo:", tipo, "priceId:", priceId);
+
+    if (!priceId) {
+      return NextResponse.json({ error: "Plano inválido." }, { status: 400 });
+    }
+
+    const session = await getServerSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
@@ -43,7 +56,6 @@ export async function POST(request: Request) {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      // ← success_url aponta para a API route que ativa o plano
       success_url: `${process.env.NEXTAUTH_URL}/api/plan/ativar?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/planos`,
       metadata: { shopId: user.shop.id },

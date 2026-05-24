@@ -8,14 +8,15 @@ import {
   Clock, DollarSign, Settings, LogOut, Store, Phone,
   ShieldCheck, ImagePlus, Save, Loader2, X, CheckCircle2,
   Smartphone, Search, AlertTriangle, CheckCircle, XCircle,
-  Info, ExternalLink, TrendingUp, Zap,
+  Info, ExternalLink, TrendingUp, Zap, ChevronRight,
+  Activity, ArrowUpRight, BarChart2,
 } from "lucide-react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { OsTable } from "@/components/dashboard/os-table";
 import { StockTab } from "@/components/dashboard/stock-tab";
 import { VendaRapidaModal } from "@/components/dashboard/venda-rapida-modal";
-import { FaturamentoModal } from "@/components/dashboard/FaturamentoModal"; // ← NOVO
+import { FaturamentoModal } from "@/components/dashboard/FaturamentoModal";
 import { fetchDashboardData } from "@/actions/dashboard-actions";
 import { getShopSettings, updateShopSettings } from "@/actions/shop-actions";
 import { useRouter } from "next/navigation";
@@ -24,7 +25,308 @@ import { detectarMarca } from "@/lib/detectarMarca";
 type Tab = "dashboard" | "os" | "estoque" | "imei" | "configuracoes";
 
 // ─────────────────────────────────────────
-// Sub-componente: Aba de Configurações
+// Design Tokens (CSS gerado inline via <style>)
+// ─────────────────────────────────────────
+const GLOBAL_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+  :root {
+    --rf-bg:          #060608;
+    --rf-surface:     #0c0c10;
+    --rf-surface-2:   #111116;
+    --rf-surface-3:   #16161c;
+    --rf-border:      rgba(255,255,255,0.055);
+    --rf-border-2:    rgba(255,255,255,0.09);
+    --rf-text:        #f0f0f4;
+    --rf-text-2:      rgba(240,240,244,0.45);
+    --rf-text-3:      rgba(240,240,244,0.22);
+
+    --teal:           #1a9e78;
+    --teal-light:     #22c997;
+    --teal-dim:       rgba(26,158,120,0.12);
+    --teal-dim-2:     rgba(26,158,120,0.07);
+    --teal-border:    rgba(26,158,120,0.25);
+
+    --amber:          #e8a430;
+    --amber-dim:      rgba(232,164,48,0.1);
+    --violet:         #8b7cf8;
+    --violet-dim:     rgba(139,124,248,0.1);
+    --red:            #e05252;
+    --red-dim:        rgba(224,82,82,0.1);
+    --red-border:     rgba(224,82,82,0.2);
+
+    --sidebar-w:      220px;
+    --radius:         10px;
+    --radius-lg:      14px;
+    --radius-xl:      18px;
+    --font:           'Geist', system-ui, sans-serif;
+    --mono:           'Geist Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--rf-bg);
+    color: var(--rf-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+  /* ── CARD ── */
+  .rf-card {
+    background: var(--rf-surface);
+    border: 0.5px solid var(--rf-border);
+    border-radius: var(--radius-lg);
+    transition: border-color 0.2s;
+  }
+  .rf-card:hover { border-color: var(--rf-border-2); }
+
+  /* ── INPUTS ── */
+  .rf-input {
+    width: 100%;
+    background: var(--rf-surface-2);
+    border: 0.5px solid var(--rf-border-2);
+    border-radius: var(--radius);
+    padding: 9px 13px;
+    color: var(--rf-text);
+    font-family: var(--font);
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .rf-input::placeholder { color: var(--rf-text-3); }
+  .rf-input:focus {
+    border-color: var(--teal-border);
+    box-shadow: 0 0 0 3px rgba(26,158,120,0.08);
+  }
+
+  /* ── BUTTONS ── */
+  .rf-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 16px;
+    background: var(--teal);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .rf-btn-primary:hover {
+    background: var(--teal-light);
+    box-shadow: 0 4px 20px rgba(26,158,120,0.28);
+    transform: translateY(-1px);
+  }
+  .rf-btn-primary:active { transform: translateY(0); }
+  .rf-btn-primary:disabled { opacity: 0.38; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .rf-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    color: var(--rf-text-2);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--rf-border-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rf-btn-ghost:hover {
+    background: var(--rf-surface-2);
+    color: var(--rf-text);
+    border-color: var(--rf-border-2);
+  }
+
+  /* ── SIDEBAR ITEMS ── */
+  .rf-nav-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--rf-text-3);
+    border: 0.5px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    background: none;
+    letter-spacing: 0.01em;
+  }
+  .rf-nav-item:hover {
+    color: var(--rf-text-2);
+    background: var(--rf-surface-2);
+  }
+  .rf-nav-item.active {
+    color: var(--rf-text);
+    background: var(--rf-surface-3);
+    border-color: var(--rf-border-2);
+  }
+  .rf-nav-item .nav-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--teal);
+    margin-left: auto;
+    box-shadow: 0 0 6px var(--teal);
+  }
+
+  /* ── BADGE ── */
+  .rf-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+  .rf-badge-teal { background: var(--teal-dim); color: var(--teal-light); border: 0.5px solid var(--teal-border); }
+  .rf-badge-amber { background: var(--amber-dim); color: var(--amber); border: 0.5px solid rgba(232,164,48,0.2); }
+  .rf-badge-violet { background: var(--violet-dim); color: var(--violet); border: 0.5px solid rgba(139,124,248,0.2); }
+  .rf-badge-red { background: var(--red-dim); color: var(--red); border: 0.5px solid var(--red-border); }
+
+  /* ── LOGO ── */
+  .rf-logo-mark {
+    width: 26px; height: 26px;
+    background: var(--teal);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 12px rgba(26,158,120,0.35);
+    flex-shrink: 0;
+  }
+  .rf-logo-mark svg { width: 14px; height: 14px; }
+
+  /* ── DIVIDER ── */
+  .rf-divider { height: 0.5px; background: var(--rf-border); width: 100%; }
+
+  /* ── METRIC CARD ── */
+  .rf-metric {
+    background: var(--rf-surface);
+    border: 0.5px solid var(--rf-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  }
+  .rf-metric:hover {
+    border-color: var(--rf-border-2);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  }
+  .rf-metric.clickable { cursor: pointer; }
+  .rf-metric::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    opacity: 0.04;
+    pointer-events: none;
+  }
+  .rf-metric-teal::before { background: var(--teal); }
+  .rf-metric-violet::before { background: var(--violet); }
+  .rf-metric-amber::before { background: var(--amber); }
+
+  /* ── SHORTCUT CARD ── */
+  .rf-shortcut {
+    background: var(--rf-surface);
+    border: 0.5px solid var(--rf-border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .rf-shortcut:hover {
+    background: var(--rf-surface-2);
+    border-color: var(--rf-border-2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  /* ── ICON CONTAINER ── */
+  .rf-icon-box {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── LOADING PULSE ── */
+  @keyframes rf-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  .rf-pulse { animation: rf-pulse 1.5s ease-in-out infinite; }
+
+  /* ── LINK ITEM ── */
+  .rf-link-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 13px;
+    background: var(--rf-surface-2);
+    border: 0.5px solid var(--rf-border);
+    border-radius: var(--radius);
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .rf-link-item:hover {
+    background: var(--rf-surface-3);
+    border-color: var(--rf-border-2);
+  }
+
+  /* ── BOTTOM NAV MOBILE ── */
+  .rf-bottom-nav {
+    background: rgba(6,6,8,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid var(--rf-border);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes rf-fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .rf-anim { animation: rf-fade-up 0.2s ease forwards; }
+`;
+
+// ─────────────────────────────────────────
+// Logo SVG inline
+// ─────────────────────────────────────────
+function LogoIcon() {
+  return (
+    <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 7C2 4.24 4.24 2 7 2s5 2.24 5 5-2.24 5-5 5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M7 5v2l1.5 1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────
+// Aba Configurações
 // ─────────────────────────────────────────
 function ConfiguracoesTab() {
   const [loading, setLoading] = useState(true);
@@ -81,79 +383,136 @@ function ConfiguracoesTab() {
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="relative">
-        <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
-      </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 240 }}>
+      <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid rgba(26,158,120,0.15)", borderTopColor: "var(--teal)", animation: "spin 0.8s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
+  const warrantyOptions = [30, 60, 90, 180];
+
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <div className="rf-card p-6 space-y-6">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Store className="w-4 h-4 text-blue-400" />
+    <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Card principal */}
+      <div className="rf-card" style={{ padding: 24 }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+          <div className="rf-icon-box" style={{ background: "var(--teal-dim)" }}>
+            <Store size={16} style={{ color: "var(--teal-light)" }} />
           </div>
-          <h2 className="text-sm font-semibold text-white">Dados da Assistência</h2>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 500, color: "var(--rf-text)" }}>Dados da Assistência</p>
+            <p style={{ fontSize: 12, color: "var(--rf-text-3)", marginTop: 1 }}>Informações exibidas nas ordens de serviço</p>
+          </div>
         </div>
 
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+        <div className="rf-divider" style={{ marginBottom: 24 }} />
+
+        {/* Logo upload */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 28 }}>
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              position: "relative", width: 88, height: 88,
+              borderRadius: 18, overflow: "hidden",
+              background: "var(--rf-surface-2)",
+              border: "0.5px dashed var(--rf-border-2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", transition: "border-color 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--teal-border)")}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--rf-border-2)")}
+          >
             {logoPreview ? (
               <>
-                <Image src={logoPreview} alt="Logo" fill className="object-contain p-2" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                  <ImagePlus className="w-5 h-5 text-white" />
+                <Image src={logoPreview} alt="Logo" fill style={{ objectFit: "contain", padding: 8 }} />
+                <div style={{
+                  position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)",
+                  opacity: 0, transition: "opacity 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "0")}
+                >
+                  <ImagePlus size={18} style={{ color: "#fff" }} />
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleRemoveLogo(); }} className="absolute top-1.5 right-1.5 bg-red-500 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition z-10">
-                  <X className="w-2.5 h-2.5 text-white" />
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemoveLogo(); }}
+                  style={{
+                    position: "absolute", top: 6, right: 6,
+                    width: 18, height: 18, borderRadius: "50%",
+                    background: "var(--red)", border: "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", zIndex: 10,
+                  }}
+                >
+                  <X size={10} color="#fff" />
                 </button>
               </>
             ) : (
-              <div className="flex flex-col items-center gap-1 text-white/20 group-hover:text-white/40 transition">
-                <ImagePlus className="w-6 h-6" />
-                <span className="text-[9px]">Logo</span>
+              <div style={{ textAlign: "center", color: "var(--rf-text-3)" }}>
+                <ImagePlus size={20} />
+                <p style={{ fontSize: 9, marginTop: 4, letterSpacing: "0.05em" }}>LOGO</p>
               </div>
             )}
           </div>
-          <p className="text-xs text-white/20">PNG, JPG ou SVG · máx. 2MB</p>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+          <p style={{ fontSize: 11, color: "var(--rf-text-3)" }}>PNG, JPG ou SVG · máx. 2MB</p>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoChange} />
         </div>
 
-        <div className="space-y-4">
+        {/* Fields */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {[
             { label: "Nome da Loja", icon: Store, value: name, onChange: setName, placeholder: "Ex: TechFix Assistência" },
             { label: "WhatsApp", icon: Phone, value: phone, onChange: setPhone, placeholder: "(11) 99999-9999" },
           ].map(({ label, icon: Icon, value, onChange, placeholder }) => (
-            <div key={label} className="space-y-1.5">
-              <label className="text-xs text-white/40 flex items-center gap-1.5 font-medium uppercase tracking-wider">
-                <Icon className="w-3 h-3" /> {label}
+            <div key={label}>
+              <label style={{
+                fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500,
+                textTransform: "uppercase", letterSpacing: "0.07em",
+                display: "flex", alignItems: "center", gap: 5, marginBottom: 6,
+              }}>
+                <Icon size={11} /> {label}
               </label>
-              <input
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                className="rf-input"
-              />
+              <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="rf-input" />
             </div>
           ))}
 
-          <div className="space-y-1.5">
-            <label className="text-xs text-white/40 flex items-center gap-1.5 font-medium uppercase tracking-wider">
-              <ShieldCheck className="w-3 h-3" /> Garantia Padrão
+          {/* Garantia */}
+          <div>
+            <label style={{
+              fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500,
+              textTransform: "uppercase", letterSpacing: "0.07em",
+              display: "flex", alignItems: "center", gap: 5, marginBottom: 6,
+            }}>
+              <ShieldCheck size={11} /> Garantia Padrão
             </label>
-            <div className="flex items-center gap-3 flex-wrap">
-              <input
-                type="number" min={1} max={730} value={warranty}
-                onChange={(e) => setWarranty(Number(e.target.value))}
-                className="rf-input w-20 text-center"
-              />
-              <span className="text-white/30 text-sm">dias</span>
-              <div className="flex gap-2 ml-auto">
-                {[30, 60, 90, 180].map((d) => (
-                  <button key={d} onClick={() => setWarranty(d)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${warranty === d ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20" : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"}`}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="number" min={1} max={730} value={warranty}
+                  onChange={(e) => setWarranty(Number(e.target.value))}
+                  className="rf-input" style={{ width: 72, textAlign: "center" }}
+                />
+                <span style={{ fontSize: 12, color: "var(--rf-text-3)" }}>dias</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                {warrantyOptions.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setWarranty(d)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      border: warranty === d ? "0.5px solid var(--teal-border)" : "0.5px solid var(--rf-border)",
+                      background: warranty === d ? "var(--teal-dim)" : "var(--rf-surface-2)",
+                      color: warranty === d ? "var(--teal-light)" : "var(--rf-text-3)",
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
                     {d}d
                   </button>
                 ))}
@@ -162,35 +521,63 @@ function ConfiguracoesTab() {
           </div>
         </div>
 
+        {/* Feedback */}
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-            <XCircle className="w-4 h-4 text-red-400 shrink-0" />
-            <p className="text-sm text-red-400">{error}</p>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "11px 13px", marginTop: 16,
+            background: "var(--red-dim)", border: "0.5px solid var(--red-border)",
+            borderRadius: "var(--radius)",
+          }}>
+            <XCircle size={15} style={{ color: "var(--red)", flexShrink: 0 }} />
+            <p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <p className="text-sm text-emerald-400">Configurações salvas com sucesso!</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "11px 13px", marginTop: 16,
+              background: "var(--teal-dim)", border: "0.5px solid var(--teal-border)",
+              borderRadius: "var(--radius)",
+            }}
+          >
+            <CheckCircle2 size={15} style={{ color: "var(--teal-light)", flexShrink: 0 }} />
+            <p style={{ fontSize: 13, color: "var(--teal-light)" }}>Configurações salvas com sucesso!</p>
+          </motion.div>
         )}
 
-        <button onClick={handleSave} disabled={saving} className="rf-btn-primary w-full">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? "Salvando..." : "Salvar Configurações"}
-        </button>
+        <div style={{ marginTop: 20 }}>
+          <button onClick={handleSave} disabled={saving} className="rf-btn-primary" style={{ width: "100%" }}>
+            {saving ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <Save size={14} />}
+            {saving ? "Salvando..." : "Salvar Configurações"}
+          </button>
+        </div>
       </div>
 
-      <div className="rf-card p-6">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
-            <LogOut className="w-4 h-4 text-red-400" />
+      {/* Conta */}
+      <div className="rf-card" style={{ padding: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div className="rf-icon-box" style={{ background: "var(--red-dim)" }}>
+            <LogOut size={15} style={{ color: "var(--red)" }} />
           </div>
-          <h2 className="text-sm font-semibold text-white">Conta</h2>
+          <p style={{ fontSize: 13.5, fontWeight: 500 }}>Conta</p>
         </div>
-        <button onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 hover:border-red-500/30 text-red-400 text-sm font-semibold flex items-center justify-center gap-2 transition-all">
-          <LogOut className="w-4 h-4" /> Sair da conta
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          style={{
+            width: "100%", padding: "9px 16px",
+            borderRadius: "var(--radius)",
+            background: "var(--red-dim)",
+            border: "0.5px solid var(--red-border)",
+            color: "var(--red)",
+            fontSize: 13, fontWeight: 500,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            cursor: "pointer", transition: "all 0.15s",
+          }}
+        >
+          <LogOut size={14} /> Sair da conta
         </button>
       </div>
     </div>
@@ -198,7 +585,7 @@ function ConfiguracoesTab() {
 }
 
 // ─────────────────────────────────────────
-// Sub-componente: Aba de Consulta IMEI
+// Aba IMEI
 // ─────────────────────────────────────────
 function ImeiTab() {
   const [imei, setImei] = useState("");
@@ -220,7 +607,7 @@ function ImeiTab() {
     setErro(""); setResultado(null);
     const num = imei.replace(/\D/g, "");
     if (num.length !== 15) { setErro("O IMEI deve ter exatamente 15 dígitos."); return; }
-    if (!validarLuhn(num)) { setErro("IMEI inválido — falhou na verificação de dígito (Luhn). Verifique se digitou corretamente."); return; }
+    if (!validarLuhn(num)) { setErro("IMEI inválido — falhou na verificação de dígito (Luhn)."); return; }
     setLoading(true);
     setTimeout(() => {
       const { marca, info } = detectarMarca(num);
@@ -242,111 +629,164 @@ function ImeiTab() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <div className="rf-card p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Smartphone className="w-4 h-4 text-blue-400" />
+    <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Consulta */}
+      <div className="rf-card" style={{ padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
+          <div className="rf-icon-box" style={{ background: "var(--teal-dim)" }}>
+            <Smartphone size={15} style={{ color: "var(--teal-light)" }} />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white">Consulta de IMEI</h2>
-            <p className="text-xs text-white/30 mt-0.5">Valide, identifique e consulte bloqueio</p>
+            <p style={{ fontSize: 14, fontWeight: 500 }}>Consulta de IMEI</p>
+            <p style={{ fontSize: 11.5, color: "var(--rf-text-3)", marginTop: 1 }}>Valide, identifique e verifique bloqueio</p>
           </div>
         </div>
 
-        <div className="flex gap-2">
+        {/* Input row */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <input
             value={imei}
             onChange={(e) => { setImei(e.target.value.replace(/\D/g, "").slice(0, 15)); setErro(""); setResultado(null); }}
-            placeholder="000000000000000"
+            placeholder="000 000 000 000 000"
             maxLength={15}
-            className="rf-input flex-1 font-mono tracking-[0.2em] text-base"
+            className="rf-input"
+            style={{ fontFamily: "var(--mono)", letterSpacing: "0.18em", fontSize: 15, flex: 1 }}
           />
-          <button onClick={consultar} disabled={loading || imeiLimpo.length < 15} className="rf-btn-primary px-5 shrink-0">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          <button
+            onClick={consultar}
+            disabled={loading || imeiLimpo.length < 15}
+            className="rf-btn-primary"
+            style={{ padding: "9px 16px", flexShrink: 0 }}
+          >
+            {loading ? <Loader2 size={15} style={{ animation: "spin 0.8s linear infinite" }} /> : <Search size={15} />}
           </button>
         </div>
 
-        <div className="flex justify-between items-center -mt-2">
-          <p className="text-xs text-white/25">Disque <span className="font-mono text-white/40">*#06#</span> para ver o IMEI</p>
-          <div className="flex gap-1">
+        {/* Progress dots */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <p style={{ fontSize: 11, color: "var(--rf-text-3)" }}>
+            Disque <span style={{ fontFamily: "var(--mono)", color: "var(--rf-text-2)" }}>*#06#</span> para ver o IMEI
+          </p>
+          <div style={{ display: "flex", gap: 3 }}>
             {Array.from({ length: 15 }).map((_, i) => (
-              <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i < imeiLimpo.length ? "bg-blue-500" : "bg-white/10"}`} />
+              <div key={i} style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: i < imeiLimpo.length ? "var(--teal)" : "var(--rf-surface-3)",
+                transition: "background 0.1s",
+                boxShadow: i < imeiLimpo.length ? "0 0 4px var(--teal)" : "none",
+              }} />
             ))}
           </div>
         </div>
 
+        {/* Error */}
         {erro && (
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-3 p-4 bg-red-500/8 border border-red-500/15 rounded-xl">
-            <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-400">{erro}</p>
+            style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              padding: "11px 13px", marginBottom: 12,
+              background: "var(--red-dim)", border: "0.5px solid var(--red-border)",
+              borderRadius: "var(--radius)",
+            }}
+          >
+            <XCircle size={14} style={{ color: "var(--red)", flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 13, color: "var(--red)" }}>{erro}</p>
           </motion.div>
         )}
 
+        {/* Result */}
         {resultado && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-            <div className="flex items-center gap-3 p-4 bg-emerald-500/8 border border-emerald-500/15 rounded-xl">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Valid badge */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "13px 15px",
+              background: "var(--teal-dim-2)",
+              border: "0.5px solid var(--teal-border)",
+              borderRadius: "var(--radius)",
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "var(--teal-dim)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <CheckCircle size={16} style={{ color: "var(--teal-light)" }} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-emerald-400">IMEI Válido</p>
-                <p className="text-xs text-white/30 font-mono mt-0.5 tracking-widest">{resultado.imei}</p>
+                <p style={{ fontSize: 13.5, fontWeight: 500, color: "var(--teal-light)" }}>IMEI Válido</p>
+                <p style={{ fontSize: 11, color: "var(--rf-text-3)", fontFamily: "var(--mono)", letterSpacing: "0.15em", marginTop: 2 }}>{resultado.imei}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rf-card p-4">
-                <p className="text-xs text-white/30 mb-2 uppercase tracking-wider">Fabricante</p>
-                <p className="text-sm font-bold text-white">{resultado.marca}</p>
-              </div>
-              <div className="rf-card p-4">
-                <p className="text-xs text-white/30 mb-2 uppercase tracking-wider">TAC</p>
-                <p className="text-sm font-mono font-bold text-white tracking-wider">{resultado.imei.substring(0, 8)}</p>
-              </div>
+            {/* Info grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[
+                { label: "Fabricante", value: resultado.marca },
+                { label: "TAC (8 dígitos)", value: resultado.imei.substring(0, 8), mono: true },
+              ].map(({ label, value, mono }) => (
+                <div key={label} className="rf-card" style={{ padding: "13px 15px" }}>
+                  <p style={{ fontSize: 10, color: "var(--rf-text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</p>
+                  <p style={{ fontSize: 14, fontWeight: 500, fontFamily: mono ? "var(--mono)" : undefined, letterSpacing: mono ? "0.12em" : undefined }}>{value}</p>
+                </div>
+              ))}
             </div>
 
-            <div className="flex items-start gap-3 p-4 bg-blue-500/8 border border-blue-500/15 rounded-xl">
-              <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-white/40">{resultado.info}</p>
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              padding: "11px 13px",
+              background: "var(--rf-surface-2)", border: "0.5px solid var(--rf-border)",
+              borderRadius: "var(--radius)",
+            }}>
+              <Info size={13} style={{ color: "var(--rf-text-3)", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 12, color: "var(--rf-text-3)", lineHeight: 1.5 }}>{resultado.info}</p>
             </div>
           </motion.div>
         )}
       </div>
 
-      <div className="rf-card p-6 space-y-4">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
+      {/* Links */}
+      <div className="rf-card" style={{ padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+          <div className="rf-icon-box" style={{ background: "var(--amber-dim)" }}>
+            <AlertTriangle size={14} style={{ color: "var(--amber)" }} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Verificar Bloqueio / Roubo</h3>
-            <p className="text-xs text-white/30 mt-0.5">
-              {imeiLimpo.length === 15 ? "IMEI preenchido nos links disponíveis" : "Preencha o IMEI para auto-completar"}
+            <p style={{ fontSize: 14, fontWeight: 500 }}>Verificar Bloqueio / Roubo</p>
+            <p style={{ fontSize: 11.5, color: "var(--rf-text-3)", marginTop: 1 }}>
+              {imeiLimpo.length === 15 ? "IMEI preenchido nos links" : "Preencha o IMEI para auto-completar"}
             </p>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {linksConsulta.map((link) => (
-            <a key={link.nome} href={link.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-between p-3.5 bg-white/2 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-xl transition-all group">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-white/20 bg-white/5 px-1.5 py-0.5 rounded font-mono">{link.badge}</span>
+            <a key={link.nome} href={link.url} target="_blank" rel="noopener noreferrer" className="rf-link-item">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 600, fontFamily: "var(--mono)",
+                  color: "var(--rf-text-3)", background: "var(--rf-surface-3)",
+                  padding: "2px 6px", borderRadius: 4, letterSpacing: "0.05em",
+                }}>{link.badge}</span>
                 <div>
-                  <p className="text-sm text-white/70 group-hover:text-white transition font-medium">{link.nome}</p>
-                  <p className="text-xs text-white/25 mt-0.5">{link.descricao}</p>
+                  <p style={{ fontSize: 13, color: "var(--rf-text-2)", fontWeight: 500 }}>{link.nome}</p>
+                  <p style={{ fontSize: 11, color: "var(--rf-text-3)", marginTop: 1 }}>{link.descricao}</p>
                 </div>
               </div>
-              <ExternalLink className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 transition shrink-0 ml-3" />
+              <ExternalLink size={12} style={{ color: "var(--rf-text-3)", flexShrink: 0 }} />
             </a>
           ))}
         </div>
 
-        <div className="flex items-start gap-2 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-500/50 shrink-0 mt-0.5" />
-          <p className="text-xs text-white/25">Consulta oficial de bloqueio é feita pelas operadoras e Anatel. Serviços de terceiros podem cobrar por consultas completas.</p>
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 8,
+          padding: "10px 12px", marginTop: 14,
+          background: "var(--amber-dim)", border: "0.5px solid rgba(232,164,48,0.15)",
+          borderRadius: "var(--radius)",
+        }}>
+          <AlertTriangle size={12} style={{ color: "var(--amber)", flexShrink: 0, marginTop: 1 }} />
+          <p style={{ fontSize: 11, color: "var(--rf-text-3)", lineHeight: 1.5 }}>
+            Consulta oficial de bloqueio é feita pelas operadoras e Anatel. Serviços de terceiros podem cobrar por consultas completas.
+          </p>
         </div>
       </div>
     </div>
@@ -360,7 +800,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [stats, setStats] = useState({ total: 0, emReparo: 0, prontas: 0, atrasadas: 0, faturamento: 0 });
   const [vendaModal, setVendaModal] = useState(false);
-  const [faturamentoModal, setFaturamentoModal] = useState(false); // ← NOVO
+  const [faturamentoModal, setFaturamentoModal] = useState(false);
   const { data: session } = useSession();
   const router = useRouter();
   const shopId = (session?.user as any)?.shopId;
@@ -383,289 +823,358 @@ export default function DashboardPage() {
     { id: "configuracoes" as Tab, label: "Configurações", icon: Settings },
   ];
 
+  const tabSubtitles: Record<Tab, string> = {
+    dashboard: "Visão geral da operação",
+    os: "Gerencie todas as ordens de serviço",
+    estoque: "Controle seu inventário de peças",
+    imei: "Valide e consulte dispositivos",
+    configuracoes: "Personalize sua conta",
+  };
+
   const metricCards = [
     {
       label: "Total de OS",
       value: stats.total.toString(),
       sub: "ordens cadastradas",
       icon: Wrench,
-      iconBg: "bg-blue-500/10",
-      iconColor: "text-blue-400",
-      accent: "from-blue-500/5 to-transparent",
+      colorClass: "rf-metric-teal",
+      iconBg: "var(--teal-dim)",
+      iconColor: "var(--teal-light)",
+      valueColor: "var(--rf-text)",
+      badge: null,
       onClick: undefined,
     },
     {
       label: "Em Reparo",
       value: stats.emReparo.toString(),
       sub: "em andamento agora",
-      icon: Clock,
-      iconBg: "bg-violet-500/10",
-      iconColor: "text-violet-400",
-      accent: "from-violet-500/5 to-transparent",
+      icon: Activity,
+      colorClass: "rf-metric-violet",
+      iconBg: "var(--violet-dim)",
+      iconColor: "var(--violet)",
+      valueColor: "var(--rf-text)",
+      badge: stats.atrasadas > 0 ? `${stats.atrasadas} atrasada${stats.atrasadas > 1 ? "s" : ""}` : null,
       onClick: undefined,
     },
     {
       label: "Faturamento",
-      value: `R$ ${stats.faturamento.toFixed(2)}`,
+      value: `R$ ${stats.faturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: "receita total acumulada",
       icon: TrendingUp,
-      iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-400",
-      accent: "from-emerald-500/5 to-transparent",
-      valueColor: "text-emerald-400",
+      colorClass: "rf-metric-teal",
+      iconBg: "var(--teal-dim)",
+      iconColor: "var(--teal-light)",
+      valueColor: "var(--teal-light)",
+      badge: null,
       onClick: () => setFaturamentoModal(true),
     },
   ];
 
   return (
     <>
-      <style>{`
-        :root {
-          --rf-bg: #080808;
-          --rf-surface: #0f0f0f;
-          --rf-border: rgba(255,255,255,0.06);
-          --rf-text: #ffffff;
-        }
-        .rf-card {
-          background: var(--rf-surface);
-          border: 1px solid var(--rf-border);
-          border-radius: 16px;
-        }
-        .rf-input {
-          width: 100%;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 12px;
-          padding: 10px 14px;
-          color: white;
-          font-size: 14px;
-          outline: none;
-          transition: border-color 0.15s, background 0.15s;
-        }
-        .rf-input::placeholder { color: rgba(255,255,255,0.2); }
-        .rf-input:focus {
-          border-color: rgba(59,130,246,0.5);
-          background: rgba(255,255,255,0.06);
-        }
-        .rf-btn-primary {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 10px 18px;
-          background: #2563eb;
-          color: white;
-          font-size: 14px;
-          font-weight: 600;
-          border-radius: 12px;
-          transition: all 0.15s;
-          border: 1px solid rgba(255,255,255,0.1);
-        }
-        .rf-btn-primary:hover { background: #1d4ed8; box-shadow: 0 8px 24px rgba(37,99,235,0.25); }
-        .rf-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-        .rf-sidebar-item {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 9px 12px;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 500;
-          transition: all 0.15s;
-          color: rgba(255,255,255,0.35);
-          border: 1px solid transparent;
-        }
-        .rf-sidebar-item:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.04); }
-        .rf-sidebar-item.active {
-          color: white;
-          background: rgba(255,255,255,0.07);
-          border-color: rgba(255,255,255,0.08);
-        }
-        .rf-logo-dot {
-          width: 7px; height: 7px;
-          background: #2563eb;
-          border-radius: 50%;
-          box-shadow: 0 0 8px #2563eb;
-        }
-      `}</style>
+      <style>{GLOBAL_STYLES}</style>
 
-      <div className="min-h-screen flex flex-col md:flex-row" style={{ background: "var(--rf-bg)", color: "var(--rf-text)" }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--rf-bg)" }}>
+        <div style={{ display: "flex", flex: 1 }}>
 
-        {/* ── SIDEBAR desktop ── */}
-        <aside className="hidden md:flex w-60 shrink-0 flex-col" style={{ borderRight: "1px solid var(--rf-border)" }}>
-          <div className="p-5 flex items-center gap-2.5" style={{ borderBottom: "1px solid var(--rf-border)" }}>
-            <div className="rf-logo-dot" />
-            <span className="text-sm font-bold tracking-tight">RepairFlow</span>
-          </div>
-
-          <nav className="flex-1 p-3 space-y-0.5">
-            {tabs.map((item) => (
-              <button key={item.id} onClick={() => setActiveTab(item.id)}
-                className={`rf-sidebar-item ${activeTab === item.id ? "active" : ""}`}>
-                <item.icon size={15} />
-                {item.label}
-                {activeTab === item.id && (
-                  <div className="ml-auto w-1 h-1 rounded-full bg-blue-500" />
-                )}
-              </button>
-            ))}
-          </nav>
-
-          <div className="p-3" style={{ borderTop: "1px solid var(--rf-border)" }}>
-            <button onClick={() => setVendaModal(true)}
-              className="rf-btn-primary w-full text-xs py-2.5">
-              <Zap size={13} /> Venda Rápida
-            </button>
-          </div>
-        </aside>
-
-        {/* ── HEADER MOBILE ── */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-30"
-          style={{ background: "var(--rf-bg)", borderBottom: "1px solid var(--rf-border)" }}>
-          <div className="flex items-center gap-2">
-            <div className="rf-logo-dot" />
-            <span className="text-sm font-bold">RepairFlow</span>
-          </div>
-          <button onClick={() => setVendaModal(true)} className="rf-btn-primary text-xs py-2 px-3">
-            <Zap size={12} /> Venda Rápida
-          </button>
-        </header>
-
-        {/* ── CONTEÚDO PRINCIPAL ── */}
-        <main className="flex-1 overflow-auto pb-24 md:pb-0">
-          {/* Topbar desktop */}
-          <div className="hidden md:flex items-center justify-between px-8 py-5" style={{ borderBottom: "1px solid var(--rf-border)" }}>
-            <div>
-              <h2 className="text-lg font-bold">{tabs.find((t) => t.id === activeTab)?.label}</h2>
-              <p className="text-xs text-white/25 mt-0.5">
-                {activeTab === "dashboard" && "Visão geral da sua operação"}
-                {activeTab === "os" && "Gerencie todas as ordens de serviço"}
-                {activeTab === "estoque" && "Controle seu inventário"}
-                {activeTab === "imei" && "Consulte e valide IMEIs"}
-                {activeTab === "configuracoes" && "Personalize sua conta"}
-              </p>
+          {/* ── SIDEBAR desktop ── */}
+          <aside
+            className="hidden md:flex"
+            style={{
+              width: "var(--sidebar-w)",
+              flexShrink: 0,
+              flexDirection: "column",
+              borderRight: "0.5px solid var(--rf-border)",
+              background: "var(--rf-surface)",
+            }}
+          >
+            {/* Logo */}
+            <div style={{
+              padding: "18px 16px",
+              display: "flex", alignItems: "center", gap: 10,
+              borderBottom: "0.5px solid var(--rf-border)",
+            }}>
+              <div className="rf-logo-mark"><LogoIcon /></div>
+              <div>
+                <p style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.01em" }}>RepairFlow</p>
+                <p style={{ fontSize: 10, color: "var(--rf-text-3)", marginTop: 0 }}>Gestão de Assistência</p>
+              </div>
             </div>
-            <div className="flex gap-2">
+
+            {/* Nav */}
+            <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+              <p style={{
+                fontSize: 9.5, color: "var(--rf-text-3)", fontWeight: 600,
+                textTransform: "uppercase", letterSpacing: "0.1em",
+                padding: "4px 10px 8px",
+              }}>Menu</p>
+              {tabs.map((item) => (
+                <button key={item.id} onClick={() => setActiveTab(item.id)}
+                  className={`rf-nav-item ${activeTab === item.id ? "active" : ""}`}>
+                  <item.icon size={15} />
+                  {item.label}
+                  {activeTab === item.id && <span className="nav-dot" />}
+                </button>
+              ))}
+            </nav>
+
+            {/* Venda Rápida */}
+            <div style={{ padding: "12px 10px", borderTop: "0.5px solid var(--rf-border)" }}>
+              <button onClick={() => setVendaModal(true)} className="rf-btn-primary" style={{ width: "100%", fontSize: 12 }}>
+                <Zap size={13} /> Venda Rápida
+              </button>
+            </div>
+          </aside>
+
+          {/* ── HEADER MOBILE ── */}
+          <header
+            className="md:hidden"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 16px",
+              position: "fixed", top: 0, left: 0, right: 0, zIndex: 30,
+              background: "rgba(6,6,8,0.88)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              borderBottom: "0.5px solid var(--rf-border)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <div className="rf-logo-mark" style={{ width: 24, height: 24, borderRadius: 6 }}><LogoIcon /></div>
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>RepairFlow</span>
+            </div>
+            <button onClick={() => setVendaModal(true)} className="rf-btn-primary" style={{ fontSize: 12, padding: "7px 13px" }}>
+              <Zap size={12} /> Venda Rápida
+            </button>
+          </header>
+
+          {/* ── MAIN ── */}
+          <main style={{ flex: 1, overflowX: "hidden", overflowY: "auto" }}
+            className="pb-24 md:pb-0 pt-16 md:pt-0"
+          >
+            {/* Topbar desktop */}
+            <div
+              className="hidden md:flex"
+              style={{
+                alignItems: "center", justifyContent: "space-between",
+                padding: "20px 32px",
+                borderBottom: "0.5px solid var(--rf-border)",
+                position: "sticky", top: 0, zIndex: 20,
+                background: "rgba(6,6,8,0.92)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+              }}
+            >
+              <div>
+                <h1 style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.02em" }}>
+                  {tabs.find((t) => t.id === activeTab)?.label}
+                </h1>
+                <p style={{ fontSize: 12, color: "var(--rf-text-3)", marginTop: 2 }}>
+                  {tabSubtitles[activeTab]}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {activeTab === "os" && (
+                  <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary" style={{ fontSize: 12 }}>
+                    <Plus size={14} /> Nova OS
+                  </button>
+                )}
+                {activeTab === "dashboard" && (
+                  <button onClick={() => setVendaModal(true)} className="rf-btn-ghost" style={{ fontSize: 12 }}>
+                    <ShoppingBag size={13} /> Venda Rápida
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile page title */}
+            <div className="md:hidden" style={{ padding: "14px 16px 0" }}>
+              <h1 style={{ fontSize: 17, fontWeight: 500 }}>{tabs.find((t) => t.id === activeTab)?.label}</h1>
               {activeTab === "os" && (
-                <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary text-xs py-2 px-4">
+                <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary"
+                  style={{ fontSize: 12, marginTop: 10 }}>
                   <Plus size={13} /> Nova OS
                 </button>
               )}
-              {activeTab === "dashboard" && (
-                <button onClick={() => setVendaModal(true)} className="rf-btn-primary text-xs py-2 px-4">
-                  <ShoppingBag size={13} /> Venda Rápida
-                </button>
-              )}
             </div>
-          </div>
 
-          {/* Topbar mobile */}
-          <div className="md:hidden flex justify-between items-center px-4 py-3">
-            <h2 className="text-base font-bold">{tabs.find((t) => t.id === activeTab)?.label}</h2>
-            {activeTab === "os" && (
-              <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary text-xs py-2 px-3">
-                <Plus size={12} /> Nova OS
-              </button>
-            )}
-          </div>
-
-          <div className="p-4 md:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.12 }}
-              >
-                {/* ── DASHBOARD ── */}
-                {activeTab === "dashboard" && (
-                  <div className="space-y-5">
-                    {/* Métricas */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {metricCards.map((card, i) => (
-                        <motion.div
-                          key={card.label}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.06 }}
-                          onClick={card.onClick}
-                          style={{ cursor: card.onClick ? "pointer" : "default" }}
-                          className={`rf-card p-5 bg-linear-to-br ${card.accent} relative overflow-hidden ${card.onClick ? "hover:brightness-110 transition-all" : ""}`}
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <p className="text-xs text-white/35 font-medium uppercase tracking-wider">{card.label}</p>
-                            <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center`}>
-                              <card.icon size={15} className={card.iconColor} />
+            {/* Content */}
+            <div style={{ padding: "24px 24px 32px" }} className="md:p-8">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {/* ── DASHBOARD ── */}
+                  {activeTab === "dashboard" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                      {/* Métricas */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+                        {metricCards.map((card, i) => (
+                          <motion.div
+                            key={card.label}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.06, duration: 0.2 }}
+                            onClick={card.onClick}
+                            className={`rf-metric ${card.colorClass} ${card.onClick ? "clickable" : ""}`}
+                          >
+                            {/* Top row */}
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+                              <div>
+                                <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                  {card.label}
+                                </p>
+                                {card.badge && (
+                                  <span className="rf-badge rf-badge-amber" style={{ marginTop: 4 }}>{card.badge}</span>
+                                )}
+                              </div>
+                              <div className="rf-icon-box" style={{ background: card.iconBg }}>
+                                <card.icon size={15} style={{ color: card.iconColor }} />
+                              </div>
                             </div>
-                          </div>
-                          <p className={`text-2xl font-bold ${"valueColor" in card && card.valueColor ? card.valueColor : "text-white"} mb-1`}>{card.value}</p>
-                          <p className="text-xs text-white/20">{card.sub}</p>
-                        </motion.div>
-                      ))}
+                            {/* Value */}
+                            <p style={{ fontSize: 26, fontWeight: 500, color: card.valueColor, letterSpacing: "-0.025em", marginBottom: 4 }}>
+                              {card.value}
+                            </p>
+                            {/* Sub row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <p style={{ fontSize: 11.5, color: "var(--rf-text-3)" }}>{card.sub}</p>
+                              {card.onClick && (
+                                <ArrowUpRight size={13} style={{ color: "var(--rf-text-3)" }} />
+                              )}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      {/* Atalhos */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                        {[
+                          {
+                            tab: "os" as Tab, icon: Wrench,
+                            label: "Ordens de Serviço",
+                            desc: "Gerencie e acompanhe reparos",
+                            accentColor: "var(--teal-light)",
+                            accentBg: "var(--teal-dim)",
+                            borderHover: "var(--teal-border)",
+                          },
+                          {
+                            tab: "estoque" as Tab, icon: Package,
+                            label: "Estoque",
+                            desc: "Produtos, capinhas e acessórios",
+                            accentColor: "var(--violet)",
+                            accentBg: "var(--violet-dim)",
+                            borderHover: "rgba(139,124,248,0.2)",
+                          },
+                        ].map(({ tab, icon: Icon, label, desc, accentColor, accentBg, borderHover }) => (
+                          <motion.button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2, duration: 0.2 }}
+                            className="rf-shortcut"
+                            style={{ textAlign: "left", border: "0.5px solid var(--rf-border)" }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = borderHover)}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--rf-border)")}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <div className="rf-icon-box" style={{ background: accentBg }}>
+                                <Icon size={15} style={{ color: accentColor }} />
+                              </div>
+                              <ChevronRight size={14} style={{ color: "var(--rf-text-3)" }} />
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--rf-text)" }}>{label}</p>
+                              <p style={{ fontSize: 12, color: "var(--rf-text-3)", marginTop: 3 }}>{desc}</p>
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
                     </div>
+                  )}
 
-                    {/* Atalhos */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {[
-                        { tab: "os" as Tab, icon: Wrench, label: "Ordens de Serviço", desc: "Gerencie e acompanhe reparos", color: "text-blue-400", bg: "bg-blue-500/8 hover:bg-blue-500/12", border: "border-blue-500/10 hover:border-blue-500/20" },
-                        { tab: "estoque" as Tab, icon: Package, label: "Estoque", desc: "Produtos, capinhas e acessórios", color: "text-violet-400", bg: "bg-violet-500/8 hover:bg-violet-500/12", border: "border-violet-500/10 hover:border-violet-500/20" },
-                      ].map(({ tab, icon: Icon, label, desc, color, bg, border }) => (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
-                          className={`${bg} border ${border} rounded-2xl p-5 text-left transition-all group`}>
-                          <div className="flex items-start justify-between mb-3">
-                            <Icon size={18} className={`${color} transition-transform group-hover:scale-110`} />
-                            <ExternalLink size={12} className="text-white/15 group-hover:text-white/30 transition" />
-                          </div>
-                          <p className="text-sm font-semibold text-white/80 group-hover:text-white transition">{label}</p>
-                          <p className="text-xs text-white/25 mt-1">{desc}</p>
-                        </button>
-                      ))}
+                  {/* OS */}
+                  {activeTab === "os" && shopId && <OsTable shopId={shopId} onStatusChange={recarregarStats} />}
+                  {activeTab === "os" && !shopId && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--rf-text-3)", fontSize: 13 }}>
+                      Aguardando sessão...
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* OS */}
-                {activeTab === "os" && shopId && <OsTable shopId={shopId} onStatusChange={recarregarStats} />}
-                {activeTab === "os" && !shopId && (
-                  <div className="flex items-center justify-center h-48 text-white/20 text-sm">Aguardando sessão...</div>
-                )}
+                  {/* Estoque */}
+                  {activeTab === "estoque" && shopId && <StockTab shopId={shopId} />}
+                  {activeTab === "estoque" && !shopId && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--rf-text-3)", fontSize: 13 }}>
+                      Aguardando sessão...
+                    </div>
+                  )}
 
-                {/* ESTOQUE */}
-                {activeTab === "estoque" && shopId && <StockTab shopId={shopId} />}
-                {activeTab === "estoque" && !shopId && (
-                  <div className="flex items-center justify-center h-48 text-white/20 text-sm">Aguardando sessão...</div>
-                )}
+                  {/* IMEI */}
+                  {activeTab === "imei" && <ImeiTab />}
 
-                {/* IMEI */}
-                {activeTab === "imei" && <ImeiTab />}
-
-                {/* CONFIGURAÇÕES */}
-                {activeTab === "configuracoes" && <ConfiguracoesTab />}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </main>
+                  {/* Config */}
+                  {activeTab === "configuracoes" && <ConfiguracoesTab />}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </main>
+        </div>
 
         {/* ── BOTTOM NAV mobile ── */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex"
-          style={{ background: "var(--rf-bg)", borderTop: "1px solid var(--rf-border)" }}>
-          {tabs.map((item) => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-all ${activeTab === item.id ? "text-blue-400" : "text-white/20"}`}>
-              <item.icon size={18} />
-              <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">
-                {item.id === "os" ? "OS" : item.id === "configuracoes" ? "Config" : item.id === "imei" ? "IMEI" : item.id === "estoque" ? "Estoque" : "Home"}
-              </span>
-              {activeTab === item.id && (
-                <div className="absolute bottom-0 w-6 h-0.5 bg-blue-500 rounded-full" />
-              )}
-            </button>
-          ))}
+        <nav
+          className="md:hidden rf-bottom-nav"
+          style={{
+            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30,
+            display: "flex",
+          }}
+        >
+          {tabs.map((item) => {
+            const isActive = activeTab === item.id;
+            const mobileLabel: Record<Tab, string> = {
+              dashboard: "Home", os: "OS", estoque: "Estoque", imei: "IMEI", configuracoes: "Config",
+            };
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                style={{
+                  flex: 1, display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center",
+                  padding: "10px 4px", gap: 3,
+                  color: isActive ? "var(--teal-light)" : "var(--rf-text-3)",
+                  background: "none", border: "none", cursor: "pointer",
+                  transition: "color 0.15s",
+                  position: "relative",
+                }}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="tab-indicator"
+                    style={{
+                      position: "absolute", top: 0, left: "50%",
+                      transform: "translateX(-50%)",
+                      width: 24, height: 2,
+                      background: "var(--teal)",
+                      borderRadius: "0 0 2px 2px",
+                      boxShadow: "0 0 8px var(--teal)",
+                    }}
+                  />
+                )}
+                <item.icon size={18} />
+                <span style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                  {mobileLabel[item.id]}
+                </span>
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Modal Venda Rápida */}
+        {/* Modais */}
         {vendaModal && shopId && (
           <VendaRapidaModal
             shopId={shopId}
@@ -673,8 +1182,6 @@ export default function DashboardPage() {
             onVenda={(lucro, total) => { handleVendaRealizada(lucro, total); setVendaModal(false); }}
           />
         )}
-
-        {/* Modal Faturamento ← NOVO */}
         {faturamentoModal && shopId && (
           <FaturamentoModal
             shopId={shopId}

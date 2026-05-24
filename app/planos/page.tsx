@@ -8,17 +8,19 @@ export default function PlanosPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
 
-  async function handleCheckout(priceId: string, tipo: string) {
+  async function handleCheckout(tipo: string) {
     setLoading(tipo);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ tipo }), // ← envia "mensal" ou "trimestral"
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        alert(data.error || "Erro ao iniciar pagamento.");
       }
     } catch {
       alert("Erro ao iniciar pagamento. Tente novamente.");
@@ -54,7 +56,7 @@ export default function PlanosPage() {
               ))}
             </ul>
             <button
-              onClick={() => handleCheckout(process.env.NEXT_PUBLIC_STRIPE_PRICE_MENSAL!, "mensal")}
+              onClick={() => handleCheckout("mensal")}
               disabled={!!loading}
               className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 font-semibold transition flex items-center justify-center gap-2"
             >
@@ -85,7 +87,7 @@ export default function PlanosPage() {
               ))}
             </ul>
             <button
-              onClick={() => handleCheckout(process.env.NEXT_PUBLIC_STRIPE_PRICE_TRIMESTRAL!, "trimestral")}
+              onClick={() => handleCheckout("trimestral")}
               disabled={!!loading}
               className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 font-semibold transition flex items-center justify-center gap-2"
             >

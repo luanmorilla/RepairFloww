@@ -5,7 +5,6 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Só protege rotas do painel
   if (!pathname.startsWith("/painel")) {
     return NextResponse.next();
   }
@@ -17,17 +16,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Busca status do plano via API interna
+  // ── /painel/ativado é especial: só precisa de autenticação, não de plano ativo
+  // É aqui que o token é atualizado após o pagamento
+  if (pathname === "/painel/ativado") {
+    return NextResponse.next();
+  }
+
   const shopId = (token as any).shopId;
   if (!shopId) {
     return NextResponse.redirect(new URL("/planos", request.url));
   }
 
-  // Checa plano no banco
-  const res = await fetch(`${process.env.NEXTAUTH_URL}/api/plan/status?shopId=${shopId}`);
-  const data = await res.json();
-
-  if (data.planStatus !== "active") {
+  const planStatus = (token as any).planStatus;
+  if (planStatus !== "active") {
     return NextResponse.redirect(new URL("/planos", request.url));
   }
 

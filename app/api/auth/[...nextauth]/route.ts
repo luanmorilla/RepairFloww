@@ -40,11 +40,26 @@ const handler = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      // Só roda no login — salva shopId e id no token
+      // No login, salva shopId e id
       if (user) {
         token.shopId = (user as any).shopId;
         token.id = user.id;
       }
+
+      // Sempre busca planStatus do banco a cada vez que o token é gerado/renovado
+      // Isso garante que após o pagamento o token reflete o status atual
+      if (token.shopId) {
+        const shop = await prisma.shop.findUnique({
+          where: { id: token.shopId as string },
+          select: { planStatus: true, planType: true, planExpiresAt: true },
+        });
+        if (shop) {
+          token.planStatus = shop.planStatus;
+          token.planType = shop.planType;
+          token.planExpiresAt = shop.planExpiresAt?.toISOString() ?? null;
+        }
+      }
+
       return token;
     },
 
@@ -52,27 +67,10 @@ const handler = NextAuth({
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).shopId = token.shopId;
+        (session.user as any).planStatus = token.planStatus;
+        (session.user as any).planType = token.planType;
+        (session.user as any).planExpiresAt = token.planExpiresAt;
       }
-
-      // ── Busca o plano atual direto do banco a cada request ──
-      // Garante que após pagamento o status reflete imediatamente
-      if (token.shopId) {
-        const shop = await prisma.shop.findUnique({
-          where: { id: token.shopId as string },
-          select: {
-            planStatus: true,
-            planType: true,
-            planExpiresAt: true,
-          },
-        });
-
-        if (shop) {
-          (session.user as any).planStatus = shop.planStatus;
-          (session.user as any).planType = shop.planType;
-          (session.user as any).planExpiresAt = shop.planExpiresAt;
-        }
-      }
-
       return session;
     },
   },
