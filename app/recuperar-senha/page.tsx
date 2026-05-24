@@ -42,9 +42,9 @@ export default function RecoverPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#050505] p-4 selection:bg-zinc-800 selection:text-white">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none"></div>
 
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="w-full max-w-[420px] relative z-10">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="w-full max-w-105 relative z-10">
         <div className="bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl">
           
           <div className="mb-8 flex justify-center">

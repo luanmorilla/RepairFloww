@@ -1,3 +1,4 @@
+// app/api/stripe/checkout/route.ts
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getServerSession } from "next-auth";
@@ -23,7 +24,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Loja não encontrada" }, { status: 404 });
     }
 
-    // Cria ou reutiliza customer no Stripe
     let customerId = user.shop.stripeCustomerId;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -43,7 +43,8 @@ export async function POST(request: Request) {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${process.env.NEXTAUTH_URL}/painel?plano=sucesso`,
+      // ← success_url aponta para a API route que ativa o plano
+      success_url: `${process.env.NEXTAUTH_URL}/api/plan/ativar?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/planos`,
       metadata: { shopId: user.shop.id },
     });
