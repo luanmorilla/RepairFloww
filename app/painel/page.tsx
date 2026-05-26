@@ -1,9 +1,10 @@
 "use client";
-
+import { AssinaturaCard } from "@/components/configuracoes/assinatura-card";
 import { useState, useEffect, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  
   LayoutDashboard, Wrench, Package, Plus, ShoppingBag,
   Clock, DollarSign, Settings, LogOut, Store, Phone,
   ShieldCheck, ImagePlus, Save, Loader2, X, CheckCircle2,
@@ -77,6 +78,15 @@ const GLOBAL_STYLES = `
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+  /* ── GRADIENTE PREMIUM PARA TÍTULOS ── */
+  .rf-title-gradient {
+    background: linear-gradient(135deg, #ffffff 0%, var(--teal-light) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+  }
 
   /* ── CARD ── */
   .rf-card {
@@ -870,11 +880,43 @@ export default function DashboardPage() {
     },
   ];
 
+  const mobileLabel: Record<Tab, string> = {
+    dashboard: "Home", os: "OS", estoque: "Estoque", imei: "IMEI", configuracoes: "Config",
+  };
+
   return (
     <>
       <style>{GLOBAL_STYLES}</style>
 
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--rf-bg)" }}>
+      {/* ── 1. GLOBAL TOPBAR (Agora ela é fixa para todas as telas) ── */}
+      <header
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 16px",
+          height: 60,
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+          background: "rgba(6,6,8,0.92)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          borderBottom: "0.5px solid var(--rf-border)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="rf-logo-mark" style={{ width: 26, height: 26, borderRadius: 7 }}><LogoIcon /></div>
+          <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em" }}>RepairFlow</span>
+        </div>
+        <button
+          onClick={() => setVendaModal(true)}
+          className="rf-btn-primary"
+          style={{ fontSize: 13, padding: "8px 16px", gap: 6 }}
+        >
+          <Zap size={14} /> 
+          <span className="hidden sm:inline">Venda Rápida</span>
+        </button>
+      </header>
+
+      {/* ── 2. WRAPPER PRINCIPAL ── */}
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--rf-bg)", paddingTop: "60px" }}>
         <div style={{ display: "flex", flex: 1 }}>
 
           {/* ── SIDEBAR desktop ── */}
@@ -888,26 +930,11 @@ export default function DashboardPage() {
               background: "var(--rf-surface)",
             }}
           >
-            {/* Logo */}
-            <div style={{
-              padding: "18px 16px",
-              display: "flex", alignItems: "center", gap: 10,
-              borderBottom: "0.5px solid var(--rf-border)",
-            }}>
-              <div className="rf-logo-mark"><LogoIcon /></div>
-              <div>
-                <p style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.01em" }}>RepairFlow</p>
-                <p style={{ fontSize: 10, color: "var(--rf-text-3)", marginTop: 0 }}>Gestão de Assistência</p>
-              </div>
+            <div style={{ padding: "20px 20px 10px" }}>
+               <p style={{ fontSize: 10, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Gestão Interna</p>
             </div>
 
-            {/* Nav */}
-            <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
-              <p style={{
-                fontSize: 9.5, color: "var(--rf-text-3)", fontWeight: 600,
-                textTransform: "uppercase", letterSpacing: "0.1em",
-                padding: "4px 10px 8px",
-              }}>Menu</p>
+            <nav style={{ flex: 1, padding: "0px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
               {tabs.map((item) => (
                 <button key={item.id} onClick={() => setActiveTab(item.id)}
                   className={`rf-nav-item ${activeTab === item.id ? "active" : ""}`}>
@@ -917,59 +944,38 @@ export default function DashboardPage() {
                 </button>
               ))}
             </nav>
-
-            {/* Venda Rápida */}
-            <div style={{ padding: "12px 10px", borderTop: "0.5px solid var(--rf-border)" }}>
-              <button onClick={() => setVendaModal(true)} className="rf-btn-primary" style={{ width: "100%", fontSize: 12 }}>
-                <Zap size={13} /> Venda Rápida
-              </button>
-            </div>
           </aside>
 
-          {/* ── HEADER MOBILE ── */}
-          <header
-            className="md:hidden"
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "12px 16px",
-              position: "fixed", top: 0, left: 0, right: 0, zIndex: 30,
-              background: "rgba(6,6,8,0.88)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
-              borderBottom: "0.5px solid var(--rf-border)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <div className="rf-logo-mark" style={{ width: 24, height: 24, borderRadius: 6 }}><LogoIcon /></div>
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>RepairFlow</span>
-            </div>
-            <button onClick={() => setVendaModal(true)} className="rf-btn-primary" style={{ fontSize: 12, padding: "7px 13px" }}>
-              <Zap size={12} /> Venda Rápida
-            </button>
-          </header>
-
           {/* ── MAIN ── */}
-          <main style={{ flex: 1, overflowX: "hidden", overflowY: "auto" }}
-            className="pb-24 md:pb-0 pt-16 md:pt-0"
-          >
-            {/* Topbar desktop */}
+          <main
+  style={{
+    flex: 1,
+    overflowX: "hidden",
+    minHeight: "calc(100vh - 60px)",
+  }}
+  className="pb-24 md:pb-0"
+>
+            
+            {/* ── 3. DESKTOP SUB-HEADER (Com Gradiente e Subtítulo Legível) ── */}
             <div
               className="hidden md:flex"
               style={{
                 alignItems: "center", justifyContent: "space-between",
                 padding: "20px 32px",
                 borderBottom: "0.5px solid var(--rf-border)",
-                position: "sticky", top: 0, zIndex: 20,
+                position: "sticky", 
+                top: 0,
+                zIndex: 20,
                 background: "rgba(6,6,8,0.92)",
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
               }}
             >
               <div>
-                <h1 style={{ fontSize: 18, fontWeight: 500, letterSpacing: "-0.02em" }}>
+                <h1 className="rf-title-gradient" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>
                   {tabs.find((t) => t.id === activeTab)?.label}
                 </h1>
-                <p style={{ fontSize: 12, color: "var(--rf-text-3)", marginTop: 2 }}>
+                <p style={{ fontSize: 13, color: "var(--rf-text-2)", marginTop: 4, fontWeight: 400 }}>
                   {tabSubtitles[activeTab]}
                 </p>
               </div>
@@ -979,20 +985,21 @@ export default function DashboardPage() {
                     <Plus size={14} /> Nova OS
                   </button>
                 )}
-                {activeTab === "dashboard" && (
-                  <button onClick={() => setVendaModal(true)} className="rf-btn-ghost" style={{ fontSize: 12 }}>
-                    <ShoppingBag size={13} /> Venda Rápida
-                  </button>
-                )}
               </div>
             </div>
 
-            {/* Mobile page title */}
-            <div className="md:hidden" style={{ padding: "14px 16px 0" }}>
-              <h1 style={{ fontSize: 17, fontWeight: 500 }}>{tabs.find((t) => t.id === activeTab)?.label}</h1>
+            {/* ── Mobile page title (Também com Gradiente e Subtítulo) ── */}
+            <div className="md:hidden" style={{ padding: "16px 16px 0" }}>
+              <h1 className="rf-title-gradient" style={{ fontSize: 20, fontWeight: 600 }}>
+                {tabs.find((t) => t.id === activeTab)?.label}
+              </h1>
+              <p style={{ fontSize: 12, color: "var(--rf-text-2)", marginTop: 2, fontWeight: 400 }}>
+                {tabSubtitles[activeTab]}
+              </p>
+              
               {activeTab === "os" && (
                 <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary"
-                  style={{ fontSize: 12, marginTop: 10 }}>
+                  style={{ fontSize: 12, marginTop: 12 }}>
                   <Plus size={13} /> Nova OS
                 </button>
               )}
@@ -1135,9 +1142,6 @@ export default function DashboardPage() {
         >
           {tabs.map((item) => {
             const isActive = activeTab === item.id;
-            const mobileLabel: Record<Tab, string> = {
-              dashboard: "Home", os: "OS", estoque: "Estoque", imei: "IMEI", configuracoes: "Config",
-            };
             return (
               <button
                 key={item.id}

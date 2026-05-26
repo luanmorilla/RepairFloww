@@ -11,17 +11,19 @@ datasource db {
 // 1. USUÁRIOS E ASSISTÊNCIAS (ONBOARDING)
 // ==========================================
 model Shop {
-  id               String      @id @default(cuid())
+  id               String   @id @default(cuid())
   name             String
   logo             String?  
   phone            String?
   address          String?
   instagram        String?
-  standardWarranty Int         @default(90) 
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  standardWarranty Int      @default(90) 
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  planStatus           String    @default("inactive")
+  // Campos de Pagamento e Assinatura
+  planStatus           String   @default("inactive")
+  subscriptionStatus   String?  @default("inactive") // Campo novo adicionado
   planType             String?
   planExpiresAt        DateTime?
   stripeCustomerId     String?
@@ -119,7 +121,7 @@ model ServiceOrder {
   profit        Float @default(0)
 
   deadline     DateTime?
-  warrantyDays Int      @default(90)
+  warrantyDays Int       @default(90)
 
   deviceId     String
   device       Device   @relation(fields: [deviceId], references: [id])

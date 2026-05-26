@@ -1,291 +1,515 @@
-// lib/pdf-os.ts
-import jsPDF from "jspdf";
+/**
+ * pdf-os.ts
+ * Gera e abre a Ordem de Serviço em uma janela de impressão premium.
+ * Funciona em mobile, desktop e impressão A4 — sem dependências externas.
+ *
+ * Uso:
+ *   import { abrirPdfOS } from "@/lib/pdf-os";
+ *   await abrirPdfOS(os);   // os = retorno de getOsById()
+ */
 
-export async function gerarPdfOS(os: any) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  const W = 210;
-  const margin = 14;
+function fmt(date: string | Date | null | undefined) {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("pt-BR");
+}
 
-  const hex2rgb = (h: string): [number, number, number] => [
-    parseInt(h.slice(1, 3), 16),
-    parseInt(h.slice(3, 5), 16),
-    parseInt(h.slice(5, 7), 16),
-  ];
+function money(value: number | null | undefined) {
+  return (value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
-  // ─── Paleta — cinza grafite + accent slate-blue discreto ─
-  const headerBg    = "#1e2535"; // grafite azulado escuro
-  const headerMid   = "#2a3347"; // degradê simulado
-  const accent      = "#3b5bdb"; // azul discreto
-  const accentSuave = "#eef2ff"; // fundo seções
-  const branco      = "#ffffff";
-  const cinzaF      = "#f9fafb";
-  const cinzaBorda  = "#e5e7eb";
-  const textoE      = "#111827";
-  const textoL      = "#6b7280";
-  const verdeG      = "#059669";
-  const verdeLight  = "#ecfdf5";
+function pad(n: number | null | undefined) {
+  return String(n ?? 0).padStart(6, "0");
+}
 
-  // ─── CABEÇALHO ──────────────────────────────────────────
-  doc.setFillColor(...hex2rgb(headerBg));
-  doc.rect(0, 0, W, 48, "F");
+// ─── Status labels ────────────────────────────────────────────────────────────
 
-  // Faixa degradê simulada (camada mais clara no topo)
-  doc.setFillColor(...hex2rgb(headerMid));
-  doc.rect(0, 0, W, 18, "F");
+const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  RECEIVED:          { label: "Recebido",       color: "#64748b" },
+  DIAGNOSING:        { label: "Em Diagnóstico", color: "#d97706" },
+  AWAITING_APPROVAL: { label: "Ag. Aprovação",  color: "#ea580c" },
+  APPROVED:          { label: "Aprovado",       color: "#2563eb" },
+  IN_REPAIR:         { label: "Em Reparo",      color: "#7c3aed" },
+  READY:             { label: "Pronto",         color: "#059669" },
+  DELIVERED:         { label: "Entregue",       color: "#475569" },
+  CANCELED:          { label: "Cancelado",      color: "#dc2626" },
+};
 
-  // Linha accent fina no topo
-  doc.setFillColor(...hex2rgb(accent));
-  doc.rect(0, 0, W, 2, "F");
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
-  // Logo
-  let logoWidth = 0;
-  if (os.shop?.logo && os.shop.logo.startsWith("data:image")) {
-    try {
-      const imgType = os.shop.logo.includes("png") ? "PNG" : "JPEG";
-      doc.addImage(os.shop.logo, imgType, margin, 9, 20, 20);
-      logoWidth = 26;
-    } catch (e) { logoWidth = 0; }
+export async function abrirPdfOS(os: any) {
+  const shop       = os.shop ?? {};
+  const customer   = os.customer ?? {};
+  const device     = os.device ?? {};
+  const status     = STATUS_MAP[os.status] ?? { label: os.status, color: "#64748b" };
+  const osNum      = pad(os.orderNumber);
+  const garantia   = shop.warrantyDays ?? 90;
+  const logoUrl    = shop.logoUrl ?? "";
+  const whatsapp   = shop.whatsapp ?? shop.phone ?? "";
+  const endereco   = shop.address ?? "";
+
+  // ── Linha de informação reutilizável ──
+  function row(label: string, value: string | null | undefined, accent = false) {
+    if (!value) return "";
+    return `
+      <div class="info-row">
+        <span class="info-label">${label}</span>
+        <span class="info-value${accent ? " accent" : ""}">${value}</span>
+      </div>`;
   }
 
-  // Nome da loja — grande e bold
-  const nomeX = margin + logoWidth;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(21);
-  doc.setTextColor(...hex2rgb(branco));
-  doc.text(os.shop?.name ?? "Assistencia Tecnica", nomeX, 20);
-
-  // Contatos
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(160, 175, 210);
-  const contatos = [os.shop?.phone, os.shop?.instagram, os.shop?.address]
-    .filter(Boolean).join("   ·   ");
-  if (contatos) doc.text(contatos, nomeX, 28);
-
-  // Status badge
-  const statusMap: Record<string, { label: string; bg: string; text: string }> = {
-    RECEIVED:          { label: "Recebido",        bg: "#374151", text: "#d1d5db" },
-    DIAGNOSING:        { label: "Diagnosticando",  bg: "#78350f", text: "#fde68a" },
-    AWAITING_APPROVAL: { label: "Ag. Aprovacao",   bg: "#78350f", text: "#fde68a" },
-    APPROVED:          { label: "Aprovado",         bg: "#1e3a8a", text: "#bfdbfe" },
-    IN_REPAIR:         { label: "Em Reparo",        bg: "#4c1d95", text: "#ddd6fe" },
-    READY:             { label: "Pronto",           bg: "#064e3b", text: "#a7f3d0" },
-    DELIVERED:         { label: "Entregue",         bg: "#064e3b", text: "#a7f3d0" },
-    CANCELED:          { label: "Cancelado",        bg: "#7f1d1d", text: "#fecaca" },
-  };
-  const si = statusMap[os.status] ?? { label: os.status, bg: "#374151", text: "#d1d5db" };
-  doc.setFillColor(...hex2rgb(si.bg));
-  doc.roundedRect(nomeX, 33, 42, 7, 2, 2, "F");
-  doc.setTextColor(...hex2rgb(si.text));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.text(si.label.toUpperCase(), nomeX + 21, 37.8, { align: "center" });
-
-  // ─── Badge OS ─────────────────────────────────────────────
-  // Box branco arredondado
-  const bW = 48;
-  const bH = 34;
-  const bX = W - margin - bW;
-  const bY = 7;
-
-  doc.setFillColor(...hex2rgb(branco));
-  doc.roundedRect(bX, bY, bW, bH, 3, 3, "F");
-
-  // Mini label no topo do badge
-  doc.setTextColor(...hex2rgb(textoL));
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6);
-  doc.text("ORDEM DE SERVICO", bX + bW / 2, bY + 6, { align: "center" });
-
-  // Linha divisória
-  doc.setDrawColor(...hex2rgb(cinzaBorda));
-  doc.setLineWidth(0.3);
-  doc.line(bX + 4, bY + 8, bX + bW - 4, bY + 8);
-
-  // Numero grande
-  doc.setTextColor(...hex2rgb(headerBg));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
-  doc.text(`#${String(os.orderNumber).padStart(4, "0")}`, bX + bW / 2, bY + 28, { align: "center" });
-
-  let y = 56;
-
-  // ─── Helpers ─────────────────────────────────────────────
-  const drawSection = (yPos: number, height: number, title: string) => {
-    doc.setFillColor(...hex2rgb(cinzaF));
-    doc.roundedRect(margin, yPos, W - margin * 2, height, 3, 3, "F");
-    doc.setDrawColor(...hex2rgb(cinzaBorda));
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, yPos, W - margin * 2, height, 3, 3, "S");
-
-    doc.setFillColor(...hex2rgb(accentSuave));
-    doc.roundedRect(margin, yPos, W - margin * 2, 10, 3, 3, "F");
-    doc.rect(margin, yPos + 6, W - margin * 2, 4, "F");
-
-    doc.setFillColor(...hex2rgb(accent));
-    doc.roundedRect(margin, yPos, 3, 10, 1, 1, "F");
-
-    doc.setTextColor(...hex2rgb(accent));
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setCharSpace(0.8);
-    doc.text(title.toUpperCase(), margin + 7, yPos + 6.8);
-    doc.setCharSpace(0);
-  };
-
-  const field = (label: string, value: string, x: number, yPos: number) => {
-    doc.setTextColor(...hex2rgb(textoL));
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.text(label, x, yPos);
-    doc.setTextColor(...hex2rgb(textoE));
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(value && value.trim() ? value : "—", x, yPos + 5.5);
-  };
-
-  const col2 = margin + (W - margin * 2) / 2 + 4;
-
-  // ─── CLIENTE ─────────────────────────────────────────────
-  drawSection(y, 32, "Dados do Cliente");
-  field("Nome", os.customer?.name ?? "", margin + 7, y + 17);
-  field("Telefone", os.customer?.phone ?? "", col2, y + 17);
-  field("CPF / Documento", os.customer?.document ?? "", margin + 7, y + 26);
-  y += 37;
-
-  // ─── APARELHO ────────────────────────────────────────────
-  drawSection(y, 32, "Aparelho");
-  field("Marca", os.device?.brand ?? "", margin + 7, y + 17);
-  field("Modelo", os.device?.model ?? "", col2, y + 17);
-  field("IMEI", os.device?.imei ?? "", margin + 7, y + 26);
-  field("Senha / Padrao", os.device?.password ?? "", col2, y + 26);
-  y += 37;
-
-  // ─── DEFEITO ─────────────────────────────────────────────
-  drawSection(y, 26, "Defeito Relatado");
-  doc.setTextColor(...hex2rgb(textoE));
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  const defLines = doc.splitTextToSize(os.defect ?? "Nao informado", W - margin * 2 - 14);
-  doc.text(defLines, margin + 7, y + 18);
-  y += 31;
-
-  // ─── ORCAMENTO ───────────────────────────────────────────
-  drawSection(y, 42, "Orcamento de Servico");
-
-  doc.setFillColor(...hex2rgb(headerBg));
-  doc.rect(margin + 3, y + 11, W - margin * 2 - 3, 7, "F");
-  doc.setTextColor(...hex2rgb(branco));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.text("DESCRICAO DO SERVICO", margin + 8, y + 16.2);
-  doc.text("VALOR", W - margin - 6, y + 16.2, { align: "right" });
-
-  doc.setFillColor(240, 244, 255);
-  doc.rect(margin + 3, y + 18, W - margin * 2 - 3, 8, "F");
-
-  doc.setTextColor(...hex2rgb(textoE));
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  const servicoDesc = os.repairType?.name ?? os.defect ?? "Servico tecnico";
-  doc.text(servicoDesc, margin + 8, y + 23.5);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...hex2rgb(accent));
-  doc.text(`R$ ${(os.servicePrice || os.totalPrice || 0).toFixed(2)}`, W - margin - 6, y + 23.5, { align: "right" });
-
-  doc.setFillColor(...hex2rgb(headerBg));
-  doc.roundedRect(W - margin - 62, y + 30, 58, 9, 2.5, 2.5, "F");
-  doc.setTextColor(...hex2rgb(branco));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.text(`TOTAL   R$ ${(os.totalPrice || 0).toFixed(2)}`, W - margin - 33, y + 36, { align: "center" });
-  y += 48;
-
-  // ─── GARANTIA ────────────────────────────────────────────
-  const diasGarantia = os.warrantyDays ?? os.shop?.standardWarranty ?? 90;
-  const dataEntrada = new Date(os.createdAt);
-  const dataGarantia = new Date(dataEntrada);
-  dataGarantia.setDate(dataGarantia.getDate() + diasGarantia);
-
-  doc.setFillColor(...hex2rgb(verdeLight));
-  doc.roundedRect(margin, y, W - margin * 2, 24, 3, 3, "F");
-  doc.setDrawColor(...hex2rgb(verdeG));
-  doc.setLineWidth(0.3);
-  doc.roundedRect(margin, y, W - margin * 2, 24, 3, 3, "S");
-  doc.setFillColor(...hex2rgb(verdeG));
-  doc.roundedRect(margin, y, 3, 24, 1, 1, "F");
-
-  doc.setTextColor(...hex2rgb(verdeG));
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setCharSpace(0.8);
-  doc.text("GARANTIA DO SERVICO", margin + 7, y + 7);
-  doc.setCharSpace(0);
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...hex2rgb(textoE));
-  doc.setFontSize(9.5);
-  doc.text(
-    `Este servico possui garantia de ${diasGarantia} dias — valida ate ${dataGarantia.toLocaleDateString("pt-BR")}.`,
-    margin + 7, y + 14
-  );
-  doc.setFontSize(7.5);
-  doc.setTextColor(...hex2rgb(textoL));
-  doc.text("A garantia cobre apenas o servico realizado, excluindo danos fisicos ou por mau uso.", margin + 7, y + 20);
-  y += 29;
-
-  // ─── OBSERVACOES ─────────────────────────────────────────
-  if (os.notes) {
-    drawSection(y, 24, "Observacoes");
-    doc.setTextColor(...hex2rgb(textoE));
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    const notasLines = doc.splitTextToSize(os.notes, W - margin * 2 - 14);
-    doc.text(notasLines, margin + 7, y + 18);
-    y += 29;
+  // ── Seção com título ──
+  function section(title: string, icon: string, content: string) {
+    return `
+      <section class="section">
+        <div class="section-header">
+          <span class="section-icon">${icon}</span>
+          <h3 class="section-title">${title}</h3>
+        </div>
+        <div class="section-body">${content}</div>
+      </section>`;
   }
 
-  // ─── DATAS ───────────────────────────────────────────────
-  doc.setTextColor(...hex2rgb(textoL));
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(`Entrada: ${dataEntrada.toLocaleDateString("pt-BR")}`, margin, y + 4);
-  if (os.deadline) {
-    doc.text(`Prazo estimado: ${new Date(os.deadline).toLocaleDateString("pt-BR")}`, margin + 55, y + 4);
-  }
-  y += 10;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OS #${osNum} — ${customer.name ?? ""}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  // ─── ASSINATURAS ─────────────────────────────────────────
-  const sigY = 262;
-  doc.setLineDashPattern([1, 1.5], 0);
-  doc.setDrawColor(...hex2rgb(cinzaBorda));
-  doc.setLineWidth(0.5);
-  doc.line(margin, sigY, margin + 74, sigY);
-  doc.line(W - margin - 74, sigY, W - margin, sigY);
-  doc.setLineDashPattern([], 0);
-  doc.setTextColor(...hex2rgb(textoL));
-  doc.setFontSize(7.5);
-  doc.text("Assinatura do Cliente", margin + 37, sigY + 5, { align: "center" });
-  doc.text("Assinatura da Assistencia", W - margin - 37, sigY + 5, { align: "center" });
+    /* ── Base ── */
+    html { font-size: 16px; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-  // ─── RODAPE ──────────────────────────────────────────────
-  doc.setFillColor(...hex2rgb(headerBg));
-  doc.rect(0, 279, W, 18, "F");
-  doc.setFillColor(...hex2rgb(accent));
-  doc.rect(0, 279, W, 1.5, "F");
+    /* ── Page wrapper ── */
+    .page {
+      max-width: 794px;
+      margin: 0 auto;
+      background: #fff;
+      min-height: 100vh;
+    }
 
-  doc.setTextColor(140, 155, 190);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  const shopName = os.shop?.name ?? "";
-  const shopPhone = os.shop?.phone ? `  ·  ${os.shop.phone}` : "";
-  doc.text(
-    `${shopName}${shopPhone}   ·   Gerado em ${new Date().toLocaleString("pt-BR")}`,
-    W / 2, 290, { align: "center" }
-  );
+    /* ── Header ── */
+    .header {
+      padding: 40px 48px 32px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .header-left { display: flex; align-items: center; gap: 20px; flex: 1; min-width: 0; }
+    .logo-wrap {
+      width: 64px; height: 64px; border-radius: 16px;
+      overflow: hidden; flex-shrink: 0;
+      border: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+      background: #f1f5f9;
+    }
+    .logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-placeholder {
+      font-size: 22px; font-weight: 900; color: #1e40af;
+      letter-spacing: -1px;
+    }
+    .shop-name {
+      font-size: 22px; font-weight: 800; color: #0f172a;
+      letter-spacing: -0.5px; line-height: 1.2;
+    }
+    .shop-meta { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+    .shop-meta span { font-size: 12px; color: #64748b; font-weight: 400; }
+    .header-right { flex-shrink: 0; text-align: right; }
+    .os-label {
+      font-size: 10px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      margin-bottom: 6px;
+    }
+    .os-number {
+      font-size: 32px; font-weight: 900; color: #0f172a;
+      letter-spacing: -1.5px; line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .os-number span { color: #2563eb; }
 
-  // ─── SALVAR ──────────────────────────────────────────────
-  const nomeLoja = (os.shop?.name ?? "OS").replace(/\s+/g, "_");
-  doc.save(`OS_${String(os.orderNumber).padStart(4, "0")}_${nomeLoja}.pdf`);
+    /* ── Status + Data banner ── */
+    .banner {
+      margin: 0 48px;
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .banner-left { display: flex; align-items: center; gap: 12px; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 14px; border-radius: 99px;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1.5px solid;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .banner-date { font-size: 12px; color: #64748b; }
+    .banner-date strong { color: #334155; font-weight: 600; }
+
+    /* ── Content ── */
+    .content {
+      padding: 32px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Sections ── */
+    .section {
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 12px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-icon { font-size: 14px; line-height: 1; }
+    .section-title {
+      font-size: 11px; font-weight: 700; color: #475569;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .section-body { padding: 4px 0; }
+
+    /* ── Info rows ── */
+    .info-row {
+      display: flex; align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 11px 20px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label {
+      font-size: 12px; color: #94a3b8; font-weight: 500;
+      flex-shrink: 0; min-width: 120px;
+    }
+    .info-value {
+      font-size: 13px; color: #1e293b; font-weight: 500;
+      text-align: right; word-break: break-word;
+    }
+    .info-value.accent { color: #2563eb; font-weight: 700; }
+
+    /* ── Defect highlight ── */
+    .defect-box {
+      margin: 0 20px 16px;
+      padding: 14px 16px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 12px;
+    }
+    .defect-label { font-size: 10px; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+    .defect-text { font-size: 13px; color: #431407; font-weight: 500; line-height: 1.6; }
+
+    /* ── Two columns ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    /* ── Total card ── */
+    .total-card {
+      border: 2px solid #2563eb;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .total-header {
+      padding: 14px 24px;
+      background: #2563eb;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .total-header-label {
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75);
+      text-transform: uppercase; letter-spacing: 0.12em;
+    }
+    .total-body {
+      padding: 20px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #eff6ff;
+    }
+    .total-desc { font-size: 13px; color: #1e40af; font-weight: 500; }
+    .total-value {
+      font-size: 38px; font-weight: 900; color: #1d4ed8;
+      letter-spacing: -1.5px; font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Warranty card ── */
+    .warranty-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 16px; overflow: hidden;
+    }
+    .warranty-header {
+      padding: 14px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .warranty-icon { font-size: 16px; }
+    .warranty-title { font-size: 13px; font-weight: 700; color: #334155; }
+    .warranty-days {
+      font-size: 11px; color: #2563eb; font-weight: 700;
+      margin-left: auto;
+      background: #eff6ff; padding: 3px 10px; border-radius: 99px;
+      border: 1px solid #bfdbfe;
+    }
+    .warranty-body { padding: 16px 20px; }
+    .warranty-text { font-size: 12px; color: #475569; line-height: 1.7; }
+    .warranty-list { margin-top: 10px; padding-left: 16px; }
+    .warranty-list li { font-size: 12px; color: #64748b; margin-bottom: 3px; }
+
+    /* ── Signatures ── */
+    .signatures {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+      margin-top: 8px;
+    }
+    .sig-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .sig-line {
+      width: 100%; height: 1px; background: #cbd5e1;
+      margin-bottom: 6px;
+    }
+    .sig-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-align: center; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 8px;
+      padding: 24px 48px;
+      border-top: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px;
+    }
+    .footer-left { display: flex; flex-direction: column; gap: 3px; }
+    .footer-brand { font-size: 13px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; }
+    .footer-contact { font-size: 11px; color: #64748b; }
+    .footer-thanks { font-size: 12px; color: #94a3b8; font-style: italic; }
+    .footer-badge {
+      font-size: 9px; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      background: #f1f5f9; padding: 4px 10px; border-radius: 99px;
+    }
+
+    /* ── Print ── */
+    @media print {
+      html, body { background: #fff; }
+      .page { max-width: 100%; min-height: auto; box-shadow: none; }
+      .no-print { display: none !important; }
+      @page { margin: 0; size: A4; }
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      .header { padding: 24px 20px 20px; flex-direction: column; gap: 16px; }
+      .header-right { text-align: left; }
+      .banner { margin: 0 20px; margin-top: 16px; flex-wrap: wrap; }
+      .content { padding: 20px; gap: 16px; }
+      .two-col { grid-template-columns: 1fr; }
+      .total-value { font-size: 28px; }
+      .signatures { grid-template-columns: 1fr; gap: 16px; }
+      .footer { padding: 20px; flex-direction: column; align-items: flex-start; }
+      .info-label { min-width: 100px; }
+    }
+
+    /* ── Print button ── */
+    .print-btn {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 14px 28px;
+      background: #2563eb;
+      color: white;
+      border: none; border-radius: 14px;
+      font-family: "Inter", sans-serif;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(37,99,235,0.35);
+      display: flex; align-items: center; gap: 8px;
+      transition: background 0.2s;
+      z-index: 999;
+    }
+    .print-btn:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-wrap">
+        ${logoUrl
+          ? `<img src="${logoUrl}" alt="${shop.name ?? "Logo"}" />`
+          : `<span class="logo-placeholder">${(shop.name ?? "RF").slice(0, 2).toUpperCase()}</span>`
+        }
+      </div>
+      <div>
+        <div class="shop-name">${shop.name ?? "Assistência Técnica"}</div>
+        <div class="shop-meta">
+          ${whatsapp ? `<span>📱 ${whatsapp}</span>` : ""}
+          ${endereco ? `<span>📍 ${endereco}</span>` : ""}
+        </div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="os-label">Ordem de Serviço</div>
+      <div class="os-number"><span>#</span>${osNum}</div>
+    </div>
+  </header>
+
+  <!-- ── STATUS BANNER ── -->
+  <div class="banner">
+    <div class="banner-left">
+      <span class="status-badge" style="color:${status.color};border-color:${status.color}22;background:${status.color}10">
+        <span class="status-dot" style="background:${status.color}"></span>
+        ${status.label}
+      </span>
+    </div>
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+      <div class="banner-date">Entrada: <strong>${fmt(os.createdAt)}</strong></div>
+      ${os.deadline ? `<div class="banner-date">Previsão: <strong>${fmt(os.deadline)}</strong></div>` : ""}
+    </div>
+  </div>
+
+  <!-- ── CONTENT ── -->
+  <main class="content">
+
+    <!-- Cliente + Aparelho (2 colunas) -->
+    <div class="two-col">
+      ${section("Cliente", "👤",
+        row("Nome", customer.name) +
+        row("Telefone", customer.phone) +
+        row("WhatsApp", customer.whatsapp)
+      )}
+      ${section("Aparelho", "📱",
+        row("Marca", device.brand) +
+        row("Modelo", device.model) +
+        row("Cor", device.color) +
+        row("IMEI", device.imei) +
+        row("Senha / PIN", device.password)
+      )}
+    </div>
+
+    <!-- Defeito -->
+    ${section("Defeito & Observações", "🔍",
+      `<div class="defect-box">
+        <div class="defect-label">Defeito relatado pelo cliente</div>
+        <div class="defect-text">${os.defect ?? "Não informado"}</div>
+      </div>` +
+      (os.notes ? row("Observações internas", os.notes) : "") +
+      (os.repairType?.name ? row("Tipo de serviço", os.repairType.name) : "") +
+      (os.accessories ? row("Acessórios entregues", os.accessories) : "")
+    )}
+
+    <!-- VALOR TOTAL -->
+    <div class="total-card">
+      <div class="total-header">
+        <span class="total-header-label">Total do Serviço</span>
+        <span style="font-size:18px;">💳</span>
+      </div>
+      <div class="total-body">
+        <span class="total-desc">Valor total acordado<br/>com o cliente</span>
+        <span class="total-value">${money(os.totalPrice)}</span>
+      </div>
+    </div>
+
+    <!-- GARANTIA -->
+    <div class="warranty-card">
+      <div class="warranty-header">
+        <span class="warranty-icon">🛡️</span>
+        <span class="warranty-title">Garantia do Serviço</span>
+        <span class="warranty-days">${garantia} dias</span>
+      </div>
+      <div class="warranty-body">
+        <div class="warranty-text">
+          A garantia cobre exclusivamente o serviço executado por esta assistência técnica, pelo período de <strong>${garantia} dias</strong> a partir da data de entrega.
+        </div>
+        <div class="warranty-text" style="margin-top:8px;">A garantia <strong>não cobre</strong>:</div>
+        <ul class="warranty-list">
+          <li>Danos causados por mau uso, quedas ou impactos</li>
+          <li>Oxidação, umidade ou danos por líquidos</li>
+          <li>Danos externos ocorridos após a entrega</li>
+          <li>Defeitos não relacionados ao serviço realizado</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ASSINATURAS -->
+    <div class="signatures">
+      <div class="sig-block">
+        <div style="height:48px;"></div>
+        <div class="sig-line"></div>
+        <span class="sig-label">Assinatura do Cliente</span>
+      </div>
+      <div class="sig-block">
+        <div style="height:48px;"></div>
+        <div class="sig-line"></div>
+        <span class="sig-label">Assinatura do Técnico</span>
+      </div>
+      <div class="sig-block">
+        <div style="height:48px;"></div>
+        <div class="sig-line"></div>
+        <span class="sig-label">Data de Entrega</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="footer-left">
+      <span class="footer-brand">${shop.name ?? "Assistência Técnica"}</span>
+      ${whatsapp ? `<span class="footer-contact">📱 ${whatsapp}</span>` : ""}
+      <span class="footer-thanks">Obrigado por confiar em nossa assistência técnica.</span>
+    </div>
+    <span class="footer-badge">RepairFlow</span>
+  </footer>
+
+</div>
+
+<!-- Botão flutuante de impressão (some no print) -->
+<button class="print-btn no-print" onclick="window.print()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+    <rect x="6" y="14" width="12" height="8"></rect>
+  </svg>
+  Imprimir / Salvar PDF
+</button>
+
+</body>
+</html>`;
+
+  const filename = `OS-${osNum}-${(customer.name ?? "cliente").replace(/\s+/g, "-")}.html`;
+
+  // Gera Blob e faz download direto — funciona em mobile e desktop sem pop-up
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Libera memória após o download iniciar
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
