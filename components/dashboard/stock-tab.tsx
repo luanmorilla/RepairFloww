@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { getStockItems, createStockItem, deleteStockItem } from "@/actions/stock-actions";
+import { getStockItems, createStockItem, deleteStockItem, updateStockItem } from "@/actions/stock-actions";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Trash2, Package, AlertTriangle, CheckCircle2,
   TrendingUp, ShoppingBag, ChevronRight, ChevronLeft,
   Barcode, ScanLine, Boxes, DollarSign, Tag, FileText,
   Wrench, Plug, Smartphone, FolderOpen, Check, X,
-  ArrowUpRight, Layers,
+  ArrowUpRight, Layers, Pencil,
 } from "lucide-react";
 
 // ─── Types & Constants ────────────────────────────────────────────────────────
@@ -249,7 +249,6 @@ function Step1({ form, set }: any) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-      {/* Nome grande */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <label style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
           Nome do produto *
@@ -288,7 +287,6 @@ function Step1({ form, set }: any) {
         </div>
       </div>
 
-      {/* Categoria — cards grandes com ícone */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <label style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
           Categoria
@@ -318,7 +316,6 @@ function Step1({ form, set }: any) {
                   overflow: "hidden",
                 }}
               >
-                {/* Glow background */}
                 {sel && (
                   <div style={{
                     position: "absolute", inset: 0,
@@ -381,7 +378,6 @@ function Step2({ form, set }: any) {
         <NumInput label="Preço de venda (R$) *" value={form.sellPrice} onChange={set("sellPrice")} prefix="R$" big />
       </div>
 
-      {/* Barra de margem animada */}
       <AnimatePresence>
         {(cost > 0 || sell > 0) && (
           <motion.div
@@ -423,7 +419,6 @@ function Step2({ form, set }: any) {
               </div>
             </div>
 
-            {/* Barra de progresso */}
             <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 99, height: 6, overflow: "hidden" }}>
               <motion.div
                 animate={{ width: mg ? `${mg.bar}%` : "0%" }}
@@ -440,7 +435,6 @@ function Step2({ form, set }: any) {
               />
             </div>
 
-            {/* Sugestões rápidas de preço */}
             {cost > 0 && (
               <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", alignSelf: "center" }}>Sugestões:</p>
@@ -473,12 +467,10 @@ function Step2({ form, set }: any) {
 // ─── STEP 3 — Quantidades ─────────────────────────────────────────────────────
 
 function Step3({ form, set }: any) {
-  const cat = getCat(form.category);
   const low = Number(form.quantity) <= Number(form.minQuantity);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      {/* Visual quantity picker */}
       <div style={{
         borderRadius: 20,
         background: "rgba(255,255,255,0.03)",
@@ -534,7 +526,6 @@ function Step3({ form, set }: any) {
         </div>
       </div>
 
-      {/* Mínimo e status */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <NumInput
           label="Quantidade mínima"
@@ -545,7 +536,6 @@ function Step3({ form, set }: any) {
           hint="Abaixo disso: alerta de reposição"
         />
 
-        {/* Status visual */}
         <div style={{
           borderRadius: 14,
           background: low ? "rgba(245,158,11,0.08)" : "rgba(16,185,129,0.08)",
@@ -600,7 +590,6 @@ function Step4({ form, set }: any) {
         multiline
       />
 
-      {/* Resumo final */}
       <div style={{
         borderRadius: 20,
         background: "rgba(99,102,241,0.06)",
@@ -636,7 +625,7 @@ function Step4({ form, set }: any) {
 
 // ─── Overlay de sucesso ───────────────────────────────────────────────────────
 
-function SuccessOverlay() {
+function SuccessOverlay({ message = "Produto salvo!", sub = "Adicionado ao seu estoque com sucesso" }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -669,23 +658,380 @@ function SuccessOverlay() {
         transition={{ delay: 0.25 }}
         style={{ textAlign: "center" }}
       >
-        <p style={{ fontSize: 20, fontWeight: 800, color: "white", marginBottom: 6 }}>Produto salvo!</p>
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)" }}>Adicionado ao seu estoque com sucesso</p>
+        <p style={{ fontSize: 20, fontWeight: 800, color: "white", marginBottom: 6 }}>{message}</p>
+        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)" }}>{sub}</p>
       </motion.div>
     </motion.div>
   );
 }
 
-// ─── FORMULÁRIO PRINCIPAL ─────────────────────────────────────────────────────
+// ─── MODAL DE EDIÇÃO ──────────────────────────────────────────────────────────
+
+function EditForm({
+  item, onClose, onSaved,
+}: { item: any; onClose: () => void; onSaved: () => void }) {
+  const cat = getCat(item.category);
+
+  const [quantity,    setQuantity]    = useState<number>(item.quantity);
+  const [costPrice,   setCostPrice]   = useState<string>(String(item.costPrice));
+  const [sellPrice,   setSellPrice]   = useState<string>(String(item.sellPrice));
+  const [minQuantity, setMinQuantity] = useState<number>(item.minQuantity ?? 2);
+  const [salvando,    setSalvando]    = useState(false);
+  const [sucesso,     setSucesso]     = useState(false);
+  const [erro,        setErro]        = useState("");
+
+  const cost = parseFloat(String(costPrice).replace(",", ".")) || 0;
+  const sell = parseFloat(String(sellPrice).replace(",", ".")) || 0;
+  const mg   = calcMargem(cost, sell);
+  const low  = quantity <= minQuantity;
+
+  async function handleSalvar() {
+    if (!costPrice || !sellPrice) {
+      setErro("Preencha o custo e o preço de venda.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await updateStockItem(item.id, {
+        quantity,
+        costPrice: parseFloat(String(costPrice).replace(",", ".")),
+        sellPrice: parseFloat(String(sellPrice).replace(",", ".")),
+        minQuantity,
+        name: item.name,
+      });
+      setSucesso(true);
+      setTimeout(() => { onSaved(); onClose(); }, 1400);
+    } catch (e: any) {
+      setErro(e.message ?? "Erro ao salvar.");
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Overlay */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0, zIndex: 40,
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(6px)",
+        }}
+      />
+
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 50,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px", pointerEvents: "none",
+      }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: "spring", stiffness: 300, damping: 28 }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            pointerEvents: "auto",
+            width: "min(480px, 100%)",
+            maxHeight: "calc(100dvh - 40px)",
+            display: "flex",
+            flexDirection: "column",
+            background: "linear-gradient(145deg, #13131a 0%, #0d0d13 100%)",
+            borderRadius: 28,
+            border: "1.5px solid rgba(255,255,255,0.09)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset",
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          {sucesso && <SuccessOverlay message="Produto atualizado!" sub="Estoque salvo com sucesso" />}
+
+          {/* Faixa colorida */}
+          <div style={{
+            height: 3,
+            background: `linear-gradient(90deg, ${cat.color}00 0%, ${cat.color} 30%, ${cat.color}80 70%, transparent 100%)`,
+          }} />
+
+          {/* Header */}
+          <div style={{
+            padding: "20px 24px 18px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 12,
+                background: cat.bg, border: `1.5px solid ${cat.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <cat.icon size={18} style={{ color: cat.color }} />
+              </div>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 800, color: "white", lineHeight: 1.1, margin: 0 }}>
+                  Editar produto
+                </p>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 3, margin: 0 }}>
+                  {item.name}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{
+                width: 32, height: 32, borderRadius: 10,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                cursor: "pointer", display: "flex",
+                alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <X size={14} color="rgba(255,255,255,0.4)" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 24 }}>
+
+            {/* Quantidade — picker visual */}
+            <div style={{
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.03)",
+              border: low ? "1.5px solid rgba(245,158,11,0.3)" : "1.5px solid rgba(255,255,255,0.07)",
+              padding: "24px 20px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+              transition: "border 0.3s",
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", margin: 0 }}>
+                Quantidade em estoque
+              </p>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                <button
+                  onClick={() => setQuantity(q => Math.max(0, q - 1))}
+                  style={{
+                    width: 44, height: 44, borderRadius: 13,
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1.5px solid rgba(255,255,255,0.1)",
+                    color: "white", fontSize: 20, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >−</button>
+
+                <div style={{ textAlign: "center" }}>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={e => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+                    min={0}
+                    style={{
+                      width: 90,
+                      background: "transparent", border: "none", outline: "none",
+                      color: low ? "#fbbf24" : "white",
+                      fontSize: 52, fontWeight: 800,
+                      textAlign: "center", fontVariantNumeric: "tabular-nums",
+                      transition: "color 0.3s",
+                    }}
+                  />
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: -4 }}>unidades</p>
+                </div>
+
+                <button
+                  onClick={() => setQuantity(q => q + 1)}
+                  style={{
+                    width: 44, height: 44, borderRadius: 13,
+                    background: "rgba(99,102,241,0.15)",
+                    border: "1.5px solid rgba(99,102,241,0.3)",
+                    color: "rgba(165,180,252,1)", fontSize: 20, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >+</button>
+              </div>
+
+              {/* Badge de status */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 12px", borderRadius: 99,
+                background: low ? "rgba(245,158,11,0.1)" : "rgba(16,185,129,0.1)",
+                border: low ? "1px solid rgba(245,158,11,0.2)" : "1px solid rgba(16,185,129,0.2)",
+              }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: low ? "#f59e0b" : "#10b981",
+                  boxShadow: low ? "0 0 6px #f59e0b" : "0 0 6px #10b981",
+                }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: low ? "#fbbf24" : "#34d399" }}>
+                  {low ? "Estoque baixo" : "Estoque normal"}
+                </span>
+              </div>
+            </div>
+
+            {/* Preços */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <NumInput
+                label="Custo (R$)"
+                value={costPrice}
+                onChange={setCostPrice}
+                prefix="R$"
+              />
+              <NumInput
+                label="Preço de venda (R$)"
+                value={sellPrice}
+                onChange={setSellPrice}
+                prefix="R$"
+              />
+            </div>
+
+            {/* Barra de margem */}
+            {(cost > 0 || sell > 0) && (
+              <div style={{
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                padding: "14px 18px",
+                display: "flex", alignItems: "center", gap: 16,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+                    Margem de lucro
+                  </p>
+                  <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 99, height: 5, overflow: "hidden" }}>
+                    <motion.div
+                      animate={{ width: mg ? `${mg.bar}%` : "0%" }}
+                      transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                      style={{
+                        height: "100%", borderRadius: 99,
+                        background: !mg
+                          ? "transparent"
+                          : mg.positive
+                          ? "linear-gradient(90deg, #059669, #10b981)"
+                          : "linear-gradient(90deg, #dc2626, #ef4444)",
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <p style={{
+                    fontSize: 22, fontWeight: 800,
+                    color: !mg ? "rgba(255,255,255,0.2)" : mg.positive ? "#10b981" : "#ef4444",
+                    fontVariantNumeric: "tabular-nums", margin: 0,
+                  }}>
+                    {mg ? `${mg.pct}%` : "—"}
+                  </p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", margin: "2px 0 0" }}>
+                    {mg ? `R$ ${mg.val} / un.` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Quantidade mínima */}
+            <NumInput
+              label="Quantidade mínima para alerta"
+              value={minQuantity}
+              onChange={(v: string) => setMinQuantity(Math.max(0, parseInt(v) || 0))}
+              min={0}
+              step="1"
+              hint="Você receberá um alerta quando o estoque cair abaixo desse valor"
+            />
+
+            {/* Erro */}
+            <AnimatePresence>
+              {erro && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "12px 16px", borderRadius: 12,
+                    background: "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0 }} />
+                  <p style={{ fontSize: 13, color: "#fca5a5", margin: 0 }}>{erro}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: "16px 24px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            display: "flex", gap: 12,
+            background: "rgba(0,0,0,0.15)",
+          }}>
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, padding: "12px", borderRadius: 13,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+
+            <motion.button
+              onClick={handleSalvar}
+              disabled={salvando}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                padding: "12px", borderRadius: 13,
+                background: "linear-gradient(135deg, #059669, #10b981)",
+                boxShadow: "0 4px 20px rgba(16,185,129,0.3)",
+                border: "none",
+                color: "white", fontSize: 14, fontWeight: 700,
+                cursor: "pointer",
+                opacity: salvando ? 0.7 : 1,
+                transition: "opacity 0.2s",
+              }}
+            >
+              {salvando ? (
+                <>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: "50%",
+                    border: "2px solid rgba(255,255,255,0.3)",
+                    borderTop: "2px solid white",
+                    animation: "spin 0.8s linear infinite",
+                  }} />
+                  Salvando...
+                </>
+              ) : (
+                <><CheckCircle2 size={16} /> Salvar alterações</>
+              )}
+            </motion.button>
+          </div>
+        </motion.div>
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </>
+  );
+}
+
+// ─── FORMULÁRIO DE NOVO PRODUTO ───────────────────────────────────────────────
 
 function NovoForm({
   shopId, onClose, onSaved,
 }: { shopId: string; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm]       = useState<any>(VAZIO);
-  const [step, setStep]       = useState(1);
+  const [form, setForm]         = useState<any>(VAZIO);
+  const [step, setStep]         = useState(1);
   const [salvando, setSalvando] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
-  const [erro, setErro]       = useState("");
+  const [sucesso, setSucesso]   = useState(false);
+  const [erro, setErro]         = useState("");
 
   function set(key: string) { return (val: any) => setForm((p: any) => ({ ...p, [key]: val })); }
 
@@ -731,7 +1077,6 @@ function NovoForm({
 
   return (
     <>
-      {/* Overlay */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -744,209 +1089,195 @@ function NovoForm({
         }}
       />
 
-      {/* Wrapper fixo de centralização — Framer Motion nao interfere no translate */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 50,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px",
-          pointerEvents: "none",
-        }}
-      >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        transition={{ type: "spring", stiffness: 300, damping: 28 }}
-        onClick={e => e.stopPropagation()}
-        style={{
-          pointerEvents: "auto",
-          width: "min(560px, 100%)",
-          maxHeight: "calc(100dvh - 40px)",
-          display: "flex",
-          flexDirection: "column",
-          background: "linear-gradient(145deg, #13131a 0%, #0d0d13 100%)",
-          borderRadius: 28,
-          border: "1.5px solid rgba(255,255,255,0.09)",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset",
-          overflow: "hidden",
-        }}
-      >
-        {sucesso && <SuccessOverlay />}
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 50,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "16px", pointerEvents: "none",
+      }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: "spring", stiffness: 300, damping: 28 }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            pointerEvents: "auto",
+            width: "min(560px, 100%)",
+            maxHeight: "calc(100dvh - 40px)",
+            display: "flex",
+            flexDirection: "column",
+            background: "linear-gradient(145deg, #13131a 0%, #0d0d13 100%)",
+            borderRadius: 28,
+            border: "1.5px solid rgba(255,255,255,0.09)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04) inset",
+            overflow: "hidden",
+          }}
+        >
+          {sucesso && <SuccessOverlay />}
 
-        {/* Faixa colorida da categoria no topo */}
-        <div style={{
-          height: 3,
-          background: `linear-gradient(90deg, ${cat.color}00 0%, ${cat.color} 30%, ${cat.color}80 70%, transparent 100%)`,
-          transition: "background 0.4s",
-        }} />
+          <div style={{
+            height: 3,
+            background: `linear-gradient(90deg, ${cat.color}00 0%, ${cat.color} 30%, ${cat.color}80 70%, transparent 100%)`,
+            transition: "background 0.4s",
+          }} />
 
-        {/* Header */}
-        <div style={{
-          padding: "20px 24px 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          display: "flex", flexDirection: "column", gap: 16,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 12,
-                background: cat.bg, border: `1.5px solid ${cat.border}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all 0.3s",
-              }}>
-                {<cat.icon size={18} style={{ color: cat.color }} />}
+          <div style={{
+            padding: "20px 24px 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            display: "flex", flexDirection: "column", gap: 16,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12,
+                  background: cat.bg, border: `1.5px solid ${cat.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.3s",
+                }}>
+                  {<cat.icon size={18} style={{ color: cat.color }} />}
+                </div>
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 800, color: "white", lineHeight: 1.1 }}>
+                    {step === 1 ? "Novo produto" : form.name || "Novo produto"}
+                  </p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>
+                    Etapa {step} de {STEPS.length} · {STEPS[step - 1]?.label}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 800, color: "white", lineHeight: 1.1 }}>
-                  {step === 1 ? "Novo produto" : form.name || "Novo produto"}
-                </p>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>
-                  Etapa {step} de {STEPS.length} · {STEPS[step - 1]?.label}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              style={{
-                width: 32, height: 32, borderRadius: 10,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                cursor: "pointer", display: "flex",
-                alignItems: "center", justifyContent: "center",
-              }}
-            >
-              <X size={14} color="rgba(255,255,255,0.4)" />
-            </button>
-          </div>
-
-          <StepBar current={step} total={STEPS.length} />
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px", scrollbarWidth: "none" }}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {step === 1 && <Step1 form={form} set={set} />}
-              {step === 2 && <Step2 form={form} set={set} />}
-              {step === 3 && <Step3 form={form} set={set} />}
-              {step === 4 && <Step4 form={form} set={set} />}
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Erro */}
-          <AnimatePresence>
-            {erro && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: "auto", marginTop: 16 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              <button
+                onClick={onClose}
                 style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "12px 16px", borderRadius: 12,
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                  overflow: "hidden",
+                  width: 32, height: 32, borderRadius: 10,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer", display: "flex",
+                  alignItems: "center", justifyContent: "center",
                 }}
               >
-                <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0 }} />
-                <p style={{ fontSize: 13, color: "#fca5a5" }}>{erro}</p>
+                <X size={14} color="rgba(255,255,255,0.4)" />
+              </button>
+            </div>
+
+            <StepBar current={step} total={STEPS.length} />
+          </div>
+
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px", scrollbarWidth: "none" }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                {step === 1 && <Step1 form={form} set={set} />}
+                {step === 2 && <Step2 form={form} set={set} />}
+                {step === 3 && <Step3 form={form} set={set} />}
+                {step === 4 && <Step4 form={form} set={set} />}
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
 
-        {/* Footer */}
-        <div style={{
-          padding: "16px 24px",
-          borderTop: "1px solid rgba(255,255,255,0.05)",
-          display: "flex", alignItems: "center", gap: 12,
-          background: "rgba(0,0,0,0.15)",
-        }}>
-          {step > 1 ? (
-            <button
-              onClick={back}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "10px 16px", borderRadius: 12,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              <ChevronLeft size={16} /> Voltar
-            </button>
-          ) : (
-            <button
-              onClick={onClose}
-              style={{
-                padding: "10px 16px", borderRadius: 12,
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.07)",
-                color: "rgba(255,255,255,0.3)", fontSize: 13, fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Cancelar
-            </button>
-          )}
+            <AnimatePresence>
+              {erro && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "12px 16px", borderRadius: 12,
+                    background: "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0 }} />
+                  <p style={{ fontSize: 13, color: "#fca5a5" }}>{erro}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-          <div style={{ flex: 1 }} />
-
-          {/* Progresso numérico */}
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
-            {step}/{STEPS.length}
-          </p>
-
-          <motion.button
-            onClick={next}
-            disabled={salvando}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "11px 22px", borderRadius: 13,
-              background: step === 4
-                ? "linear-gradient(135deg, #059669, #10b981)"
-                : `linear-gradient(135deg, ${cat.color}cc, ${cat.color})`,
-              boxShadow: step === 4
-                ? "0 4px 20px rgba(16,185,129,0.35)"
-                : `0 4px 20px ${cat.glow}`,
-              border: "none",
-              color: "white", fontSize: 14, fontWeight: 700,
-              cursor: "pointer", minWidth: 140, justifyContent: "center",
-              transition: "box-shadow 0.3s",
-              opacity: salvando ? 0.7 : 1,
-            }}
-          >
-            {salvando ? (
-              <>
-                <div style={{
-                  width: 16, height: 16, borderRadius: "50%",
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  borderTop: "2px solid white",
-                  animation: "spin 0.8s linear infinite",
-                }} />
-                Salvando...
-              </>
-            ) : step === 4 ? (
-              <><CheckCircle2 size={16} /> Salvar produto</>
+          <div style={{
+            padding: "16px 24px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            display: "flex", alignItems: "center", gap: 12,
+            background: "rgba(0,0,0,0.15)",
+          }}>
+            {step > 1 ? (
+              <button
+                onClick={back}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "10px 16px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <ChevronLeft size={16} /> Voltar
+              </button>
             ) : (
-              <>Próximo <ChevronRight size={16} /></>
+              <button
+                onClick={onClose}
+                style={{
+                  padding: "10px 16px", borderRadius: 12,
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  color: "rgba(255,255,255,0.3)", fontSize: 13, fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
             )}
-          </motion.button>
-        </div>
-      </motion.div>
+
+            <div style={{ flex: 1 }} />
+
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+              {step}/{STEPS.length}
+            </p>
+
+            <motion.button
+              onClick={next}
+              disabled={salvando}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "11px 22px", borderRadius: 13,
+                background: step === 4
+                  ? "linear-gradient(135deg, #059669, #10b981)"
+                  : `linear-gradient(135deg, ${cat.color}cc, ${cat.color})`,
+                boxShadow: step === 4
+                  ? "0 4px 20px rgba(16,185,129,0.35)"
+                  : `0 4px 20px ${cat.glow}`,
+                border: "none",
+                color: "white", fontSize: 14, fontWeight: 700,
+                cursor: "pointer", minWidth: 140, justifyContent: "center",
+                transition: "box-shadow 0.3s",
+                opacity: salvando ? 0.7 : 1,
+              }}
+            >
+              {salvando ? (
+                <>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: "50%",
+                    border: "2px solid rgba(255,255,255,0.3)",
+                    borderTop: "2px solid white",
+                    animation: "spin 0.8s linear infinite",
+                  }} />
+                  Salvando...
+                </>
+              ) : step === 4 ? (
+                <><CheckCircle2 size={16} /> Salvar produto</>
+              ) : (
+                <>Próximo <ChevronRight size={16} /></>
+              )}
+            </motion.button>
+          </div>
+        </motion.div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -957,10 +1288,11 @@ function NovoForm({
 // ─── StockTab ─────────────────────────────────────────────────────────────────
 
 export function StockTab({ shopId }: { shopId: string }) {
-  const [items, setItems]       = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [items, setItems]         = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [showForm, setShowForm]   = useState(false);
   const [deletando, setDeletando] = useState<string | null>(null);
+  const [editItem, setEditItem]   = useState<any | null>(null); // ← NOVO
 
   async function load() {
     setLoading(true);
@@ -987,7 +1319,10 @@ export function StockTab({ shopId }: { shopId: string }) {
     <>
       <style>{`
         @keyframes shimmer { 0%{background-position:-200% center}100%{background-position:200% center} }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .sk { background:linear-gradient(90deg,#ffffff04 25%,#ffffff0b 50%,#ffffff04 75%); background-size:200% 100%; animation:shimmer 1.8s ease-in-out infinite; border-radius:16px; }
+        .edit-btn:hover { background: rgba(99,102,241,0.18) !important; border-color: rgba(99,102,241,0.35) !important; }
+        .del-btn:hover  { background: rgba(239,68,68,0.15)  !important; }
       `}</style>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -1023,9 +1358,9 @@ export function StockTab({ shopId }: { shopId: string }) {
             style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}
           >
             {[
-              { icon: ShoppingBag, label: "Em estoque",  value: totalItens,                   color: "#818cf8", bg: "rgba(99,102,241,0.1)",  border: "rgba(99,102,241,0.18)" },
-              { icon: AlertTriangle, label: "Alertas",   value: alertas,                      color: alertas > 0 ? "#fbbf24" : "rgba(255,255,255,0.25)", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.15)" },
-              { icon: TrendingUp, label: "Valor total",  value: `R$ ${valorTotal.toFixed(0)}`, color: "#34d399", bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.15)" },
+              { icon: ShoppingBag,   label: "Em estoque", value: totalItens,                    color: "#818cf8", bg: "rgba(99,102,241,0.1)",  border: "rgba(99,102,241,0.18)" },
+              { icon: AlertTriangle, label: "Alertas",    value: alertas,                       color: alertas > 0 ? "#fbbf24" : "rgba(255,255,255,0.25)", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.15)" },
+              { icon: TrendingUp,    label: "Valor total", value: `R$ ${valorTotal.toFixed(0)}`, color: "#34d399", bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.15)" },
             ].map((s, i) => (
               <div key={i} style={{
                 display: "flex", flexDirection: "column", alignItems: "center",
@@ -1120,11 +1455,9 @@ export function StockTab({ shopId }: { shopId: string }) {
                       position: "relative",
                     }}
                   >
-                    {/* Linha de cor da categoria */}
                     <div style={{
                       position: "absolute", left: 0, top: 0, bottom: 0, width: 3,
                       background: cat.color, opacity: 0.6,
-                      borderRadius: "0 0 0 0",
                     }} />
 
                     <div style={{ padding: "14px 16px 14px 22px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -1172,7 +1505,26 @@ export function StockTab({ shopId }: { shopId: string }) {
                         </div>
                       </div>
 
+                      {/* ── BOTÃO EDITAR (NOVO) ── */}
                       <button
+                        className="edit-btn"
+                        onClick={() => setEditItem(item)}
+                        title="Editar produto"
+                        style={{
+                          width: 32, height: 32, borderRadius: 9,
+                          background: "rgba(99,102,241,0.08)",
+                          border: "1px solid rgba(99,102,241,0.18)",
+                          cursor: "pointer", flexShrink: 0,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <Pencil size={13} color="#a5b4fc" />
+                      </button>
+
+                      {/* ── BOTÃO DELETAR ── */}
+                      <button
+                        className="del-btn"
                         onClick={() => handleDelete(item.id)}
                         disabled={deletando === item.id}
                         style={{
@@ -1184,8 +1536,6 @@ export function StockTab({ shopId }: { shopId: string }) {
                           opacity: deletando === item.id ? 0.5 : 1,
                           transition: "all 0.2s",
                         }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.15)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.07)"; }}
                       >
                         {deletando === item.id
                           ? <div style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(239,68,68,0.3)", borderTop: "2px solid #ef4444", animation: "spin 0.8s linear infinite" }} />
@@ -1200,11 +1550,23 @@ export function StockTab({ shopId }: { shopId: string }) {
         )}
       </div>
 
+      {/* Modal novo produto */}
       <AnimatePresence>
         {showForm && (
           <NovoForm
             shopId={shopId}
             onClose={() => setShowForm(false)}
+            onSaved={load}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modal editar produto */}
+      <AnimatePresence>
+        {editItem && (
+          <EditForm
+            item={editItem}
+            onClose={() => setEditItem(null)}
             onSaved={load}
           />
         )}

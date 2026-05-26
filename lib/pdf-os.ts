@@ -23,6 +23,8 @@ function pad(n: number | null | undefined) {
   return String(n ?? 0).padStart(6, "0");
 }
 
+
+
 // ─── Status labels ────────────────────────────────────────────────────────────
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -38,14 +40,15 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export async function abrirPdfOS(os: any) {
+export function abrirPdfOS(os: any) {
   const shop       = os.shop ?? {};
   const customer   = os.customer ?? {};
   const device     = os.device ?? {};
   const status     = STATUS_MAP[os.status] ?? { label: os.status, color: "#64748b" };
   const osNum      = pad(os.orderNumber);
-  const garantia   = shop.warrantyDays ?? 90;
-  const logoUrl    = shop.logoUrl ?? "";
+  const garantia   = shop.warrantyDays ?? shop.standardWarranty ?? 90;
+  // A logo já é salva como base64 no banco (campo "logo") — usa direto, sem fetch
+  const logoBase64 = shop.logo ?? "";
   const whatsapp   = shop.whatsapp ?? shop.phone ?? "";
   const endereco   = shop.address ?? "";
 
@@ -70,6 +73,11 @@ export async function abrirPdfOS(os: any) {
         <div class="section-body">${content}</div>
       </section>`;
   }
+
+  // ── Bloco da logo: base64 já vem do banco, senão mostra placeholder ──
+  const logoHtml = logoBase64
+    ? `<img src="${logoBase64}" alt="${shop.name ?? "Logo"}" />`
+    : `<span class="logo-placeholder">${(shop.name ?? "RF").slice(0, 2).toUpperCase()}</span>`;
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -356,10 +364,7 @@ export async function abrirPdfOS(os: any) {
   <header class="header">
     <div class="header-left">
       <div class="logo-wrap">
-        ${logoUrl
-          ? `<img src="${logoUrl}" alt="${shop.name ?? "Logo"}" />`
-          : `<span class="logo-placeholder">${(shop.name ?? "RF").slice(0, 2).toUpperCase()}</span>`
-        }
+        ${logoHtml}
       </div>
       <div>
         <div class="shop-name">${shop.name ?? "Assistência Técnica"}</div>

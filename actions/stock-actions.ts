@@ -40,6 +40,7 @@ export async function updateStockItem(id: string, data: Partial<{
   quantity: number;
   costPrice: number;
   sellPrice: number;
+  minQuantity: number; // ← adicionado
 }>) {
   const item = await prisma.stockItem.update({ where: { id }, data });
   revalidatePath("/painel");
