@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  
   LayoutDashboard, Wrench, Package, Plus, ShoppingBag,
   Clock, DollarSign, Settings, LogOut, Store, Phone,
   ShieldCheck, ImagePlus, Save, Loader2, X, CheckCircle2,
@@ -25,9 +24,6 @@ import { detectarMarca } from "@/lib/detectarMarca";
 
 type Tab = "dashboard" | "os" | "estoque" | "imei" | "configuracoes";
 
-// ─────────────────────────────────────────
-// Design Tokens (CSS gerado inline via <style>)
-// ─────────────────────────────────────────
 const GLOBAL_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
 
@@ -73,13 +69,11 @@ const GLOBAL_STYLES = `
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
-  /* ── GRADIENTE PREMIUM PARA TÍTULOS ── */
   .rf-title-gradient {
     background: linear-gradient(135deg, #ffffff 0%, var(--teal-light) 100%);
     -webkit-background-clip: text;
@@ -88,7 +82,6 @@ const GLOBAL_STYLES = `
     display: inline-block;
   }
 
-  /* ── CARD ── */
   .rf-card {
     background: var(--rf-surface);
     border: 0.5px solid var(--rf-border);
@@ -97,7 +90,6 @@ const GLOBAL_STYLES = `
   }
   .rf-card:hover { border-color: var(--rf-border-2); }
 
-  /* ── INPUTS ── */
   .rf-input {
     width: 100%;
     background: var(--rf-surface-2);
@@ -116,7 +108,6 @@ const GLOBAL_STYLES = `
     box-shadow: 0 0 0 3px rgba(26,158,120,0.08);
   }
 
-  /* ── BUTTONS ── */
   .rf-btn-primary {
     display: inline-flex;
     align-items: center;
@@ -165,7 +156,6 @@ const GLOBAL_STYLES = `
     border-color: var(--rf-border-2);
   }
 
-  /* ── SIDEBAR ITEMS ── */
   .rf-nav-item {
     width: 100%;
     display: flex;
@@ -200,7 +190,6 @@ const GLOBAL_STYLES = `
     box-shadow: 0 0 6px var(--teal);
   }
 
-  /* ── BADGE ── */
   .rf-badge {
     display: inline-flex;
     align-items: center;
@@ -215,7 +204,6 @@ const GLOBAL_STYLES = `
   .rf-badge-violet { background: var(--violet-dim); color: var(--violet); border: 0.5px solid rgba(139,124,248,0.2); }
   .rf-badge-red { background: var(--red-dim); color: var(--red); border: 0.5px solid var(--red-border); }
 
-  /* ── LOGO ── */
   .rf-logo-mark {
     width: 26px; height: 26px;
     background: var(--teal);
@@ -226,10 +214,8 @@ const GLOBAL_STYLES = `
   }
   .rf-logo-mark svg { width: 14px; height: 14px; }
 
-  /* ── DIVIDER ── */
   .rf-divider { height: 0.5px; background: var(--rf-border); width: 100%; }
 
-  /* ── METRIC CARD ── */
   .rf-metric {
     background: var(--rf-surface);
     border: 0.5px solid var(--rf-border);
@@ -259,7 +245,6 @@ const GLOBAL_STYLES = `
   .rf-metric-violet::before { background: var(--violet); }
   .rf-metric-amber::before { background: var(--amber); }
 
-  /* ── SHORTCUT CARD ── */
   .rf-shortcut {
     background: var(--rf-surface);
     border: 0.5px solid var(--rf-border);
@@ -278,7 +263,6 @@ const GLOBAL_STYLES = `
     box-shadow: 0 12px 40px rgba(0,0,0,0.3);
   }
 
-  /* ── ICON CONTAINER ── */
   .rf-icon-box {
     width: 34px; height: 34px;
     border-radius: 9px;
@@ -286,11 +270,9 @@ const GLOBAL_STYLES = `
     flex-shrink: 0;
   }
 
-  /* ── LOADING PULSE ── */
   @keyframes rf-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
   .rf-pulse { animation: rf-pulse 1.5s ease-in-out infinite; }
 
-  /* ── LINK ITEM ── */
   .rf-link-item {
     display: flex;
     align-items: center;
@@ -307,7 +289,6 @@ const GLOBAL_STYLES = `
     border-color: var(--rf-border-2);
   }
 
-  /* ── BOTTOM NAV MOBILE ── */
   .rf-bottom-nav {
     background: rgba(6,6,8,0.92);
     backdrop-filter: blur(20px);
@@ -315,7 +296,6 @@ const GLOBAL_STYLES = `
     border-top: 0.5px solid var(--rf-border);
   }
 
-  /* ── ANIMATIONS ── */
   @keyframes rf-fade-up {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -323,9 +303,6 @@ const GLOBAL_STYLES = `
   .rf-anim { animation: rf-fade-up 0.2s ease forwards; }
 `;
 
-// ─────────────────────────────────────────
-// Logo SVG inline
-// ─────────────────────────────────────────
 function LogoIcon() {
   return (
     <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -335,9 +312,6 @@ function LogoIcon() {
   );
 }
 
-// ─────────────────────────────────────────
-// Aba Configurações
-// ─────────────────────────────────────────
 function ConfiguracoesTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -403,9 +377,8 @@ function ConfiguracoesTab() {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Card principal */}
+      {/* Card principal — Dados da Assistência */}
       <div className="rf-card" style={{ padding: 24 }}>
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
           <div className="rf-icon-box" style={{ background: "var(--teal-dim)" }}>
             <Store size={16} style={{ color: "var(--teal-light)" }} />
@@ -566,6 +539,9 @@ function ConfiguracoesTab() {
         </div>
       </div>
 
+      {/* ── Assinatura — portal Stripe ── */}
+      <AssinaturaCard />
+
       {/* Conta */}
       <div className="rf-card" style={{ padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -594,9 +570,6 @@ function ConfiguracoesTab() {
   );
 }
 
-// ─────────────────────────────────────────
-// Aba IMEI
-// ─────────────────────────────────────────
 function ImeiTab() {
   const [imei, setImei] = useState("");
   const [resultado, setResultado] = useState<any>(null);
@@ -640,7 +613,6 @@ function ImeiTab() {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Consulta */}
       <div className="rf-card" style={{ padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
           <div className="rf-icon-box" style={{ background: "var(--teal-dim)" }}>
@@ -652,7 +624,6 @@ function ImeiTab() {
           </div>
         </div>
 
-        {/* Input row */}
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <input
             value={imei}
@@ -672,7 +643,6 @@ function ImeiTab() {
           </button>
         </div>
 
-        {/* Progress dots */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <p style={{ fontSize: 11, color: "var(--rf-text-3)" }}>
             Disque <span style={{ fontFamily: "var(--mono)", color: "var(--rf-text-2)" }}>*#06#</span> para ver o IMEI
@@ -689,7 +659,6 @@ function ImeiTab() {
           </div>
         </div>
 
-        {/* Error */}
         {erro && (
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
             style={{
@@ -704,10 +673,8 @@ function ImeiTab() {
           </motion.div>
         )}
 
-        {/* Result */}
         {resultado && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {/* Valid badge */}
             <div style={{
               display: "flex", alignItems: "center", gap: 12,
               padding: "13px 15px",
@@ -728,7 +695,6 @@ function ImeiTab() {
               </div>
             </div>
 
-            {/* Info grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
                 { label: "Fabricante", value: resultado.marca },
@@ -754,7 +720,6 @@ function ImeiTab() {
         )}
       </div>
 
-      {/* Links */}
       <div className="rf-card" style={{ padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
           <div className="rf-icon-box" style={{ background: "var(--amber-dim)" }}>
@@ -803,9 +768,6 @@ function ImeiTab() {
   );
 }
 
-// ─────────────────────────────────────────
-// Página principal
-// ─────────────────────────────────────────
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [stats, setStats] = useState({ total: 0, emReparo: 0, prontas: 0, atrasadas: 0, faturamento: 0 });
@@ -888,7 +850,6 @@ export default function DashboardPage() {
     <>
       <style>{GLOBAL_STYLES}</style>
 
-      {/* ── 1. GLOBAL TOPBAR (Agora ela é fixa para todas as telas) ── */}
       <header
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -910,16 +871,15 @@ export default function DashboardPage() {
           className="rf-btn-primary"
           style={{ fontSize: 13, padding: "8px 16px", gap: 6 }}
         >
-          <Zap size={14} /> 
+          <Zap size={14} />
           <span className="hidden sm:inline">Venda Rápida</span>
         </button>
       </header>
 
-      {/* ── 2. WRAPPER PRINCIPAL ── */}
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--rf-bg)", paddingTop: "60px" }}>
         <div style={{ display: "flex", flex: 1 }}>
 
-          {/* ── SIDEBAR desktop ── */}
+          {/* Sidebar desktop */}
           <aside
             className="hidden md:flex"
             style={{
@@ -931,9 +891,8 @@ export default function DashboardPage() {
             }}
           >
             <div style={{ padding: "20px 20px 10px" }}>
-               <p style={{ fontSize: 10, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Gestão Interna</p>
+              <p style={{ fontSize: 10, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Gestão Interna</p>
             </div>
-
             <nav style={{ flex: 1, padding: "0px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
               {tabs.map((item) => (
                 <button key={item.id} onClick={() => setActiveTab(item.id)}
@@ -946,24 +905,19 @@ export default function DashboardPage() {
             </nav>
           </aside>
 
-          {/* ── MAIN ── */}
+          {/* Main */}
           <main
-  style={{
-    flex: 1,
-    overflowX: "hidden",
-    minHeight: "calc(100vh - 60px)",
-  }}
-  className="pb-24 md:pb-0"
->
-            
-            {/* ── 3. DESKTOP SUB-HEADER (Com Gradiente e Subtítulo Legível) ── */}
+            style={{ flex: 1, overflowX: "hidden", minHeight: "calc(100vh - 60px)" }}
+            className="pb-24 md:pb-0"
+          >
+            {/* Desktop sub-header */}
             <div
               className="hidden md:flex"
               style={{
                 alignItems: "center", justifyContent: "space-between",
                 padding: "20px 32px",
                 borderBottom: "0.5px solid var(--rf-border)",
-                position: "sticky", 
+                position: "sticky",
                 top: 0,
                 zIndex: 20,
                 background: "rgba(6,6,8,0.92)",
@@ -988,7 +942,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ── Mobile page title (Também com Gradiente e Subtítulo) ── */}
+            {/* Mobile page title */}
             <div className="md:hidden" style={{ padding: "16px 16px 0" }}>
               <h1 className="rf-title-gradient" style={{ fontSize: 20, fontWeight: 600 }}>
                 {tabs.find((t) => t.id === activeTab)?.label}
@@ -996,7 +950,6 @@ export default function DashboardPage() {
               <p style={{ fontSize: 12, color: "var(--rf-text-2)", marginTop: 2, fontWeight: 400 }}>
                 {tabSubtitles[activeTab]}
               </p>
-              
               {activeTab === "os" && (
                 <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary"
                   style={{ fontSize: 12, marginTop: 12 }}>
@@ -1015,10 +968,9 @@ export default function DashboardPage() {
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.15 }}
                 >
-                  {/* ── DASHBOARD ── */}
+                  {/* Dashboard */}
                   {activeTab === "dashboard" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      {/* Métricas */}
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
                         {metricCards.map((card, i) => (
                           <motion.div
@@ -1029,7 +981,6 @@ export default function DashboardPage() {
                             onClick={card.onClick}
                             className={`rf-metric ${card.colorClass} ${card.onClick ? "clickable" : ""}`}
                           >
-                            {/* Top row */}
                             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
                               <div>
                                 <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -1043,11 +994,9 @@ export default function DashboardPage() {
                                 <card.icon size={15} style={{ color: card.iconColor }} />
                               </div>
                             </div>
-                            {/* Value */}
                             <p style={{ fontSize: 26, fontWeight: 500, color: card.valueColor, letterSpacing: "-0.025em", marginBottom: 4 }}>
                               {card.value}
                             </p>
-                            {/* Sub row */}
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                               <p style={{ fontSize: 11.5, color: "var(--rf-text-3)" }}>{card.sub}</p>
                               {card.onClick && (
@@ -1058,7 +1007,6 @@ export default function DashboardPage() {
                         ))}
                       </div>
 
-                      {/* Atalhos */}
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
                         {[
                           {
@@ -1132,7 +1080,7 @@ export default function DashboardPage() {
           </main>
         </div>
 
-        {/* ── BOTTOM NAV mobile ── */}
+        {/* Bottom nav mobile */}
         <nav
           className="md:hidden rf-bottom-nav"
           style={{

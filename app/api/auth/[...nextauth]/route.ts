@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -40,14 +40,11 @@ const handler = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      // No login, salva shopId e id
       if (user) {
         token.shopId = (user as any).shopId;
         token.id = user.id;
       }
 
-      // Sempre busca planStatus do banco a cada vez que o token é gerado/renovado
-      // Isso garante que após o pagamento o token reflete o status atual
       if (token.shopId) {
         const shop = await prisma.shop.findUnique({
           where: { id: token.shopId as string },
@@ -82,6 +79,8 @@ const handler = NextAuth({
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
