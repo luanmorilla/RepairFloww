@@ -58,102 +58,114 @@ async function main() {
 { brand: 'Apple', model: 'iPhone 17 Pro',        marketValue: 9500 },
 { brand: 'Apple', model: 'iPhone 17 Pro Max',    marketValue: 11000 },
     // ─────────────────────────────────────────
-    // SAMSUNG GALAXY J
-    // ─────────────────────────────────────────
-    { brand: 'Samsung', model: 'Galaxy J2 Pro',      marketValue: 400 },
-    { brand: 'Samsung', model: 'Galaxy J4',          marketValue: 500 },
-    { brand: 'Samsung', model: 'Galaxy J4 Core',     marketValue: 480 },
-    { brand: 'Samsung', model: 'Galaxy J4 Plus',     marketValue: 550 },
-    { brand: 'Samsung', model: 'Galaxy J5 Pro',      marketValue: 550 },
-    { brand: 'Samsung', model: 'Galaxy J6',          marketValue: 600 },
-    { brand: 'Samsung', model: 'Galaxy J6 Plus',     marketValue: 650 },
-    { brand: 'Samsung', model: 'Galaxy J7 Prime',    marketValue: 650 },
-    { brand: 'Samsung', model: 'Galaxy J7 Pro',      marketValue: 700 },
-    { brand: 'Samsung', model: 'Galaxy J7 Duo',      marketValue: 680 },
-    { brand: 'Samsung', model: 'Galaxy J8',          marketValue: 750 },
+    /// ─────────────────────────────────────────
+// SAMSUNG GALAXY J
+// ─────────────────────────────────────────
+{ brand: 'Samsung', model: 'Galaxy J2 Core',     marketValue: 380 },
+{ brand: 'Samsung', model: 'Galaxy J2 Pro',      marketValue: 400 },
+{ brand: 'Samsung', model: 'Galaxy J4',          marketValue: 500 },
+{ brand: 'Samsung', model: 'Galaxy J4 Core',     marketValue: 480 },
+{ brand: 'Samsung', model: 'Galaxy J4 Plus',     marketValue: 550 },
+{ brand: 'Samsung', model: 'Galaxy J5',          marketValue: 500 },
+{ brand: 'Samsung', model: 'Galaxy J5 Prime',    marketValue: 520 },
+{ brand: 'Samsung', model: 'Galaxy J5 Pro',      marketValue: 550 },
+{ brand: 'Samsung', model: 'Galaxy J6',          marketValue: 600 },
+{ brand: 'Samsung', model: 'Galaxy J6 Core',     marketValue: 580 },
+{ brand: 'Samsung', model: 'Galaxy J6 Plus',     marketValue: 650 },
+{ brand: 'Samsung', model: 'Galaxy J7',          marketValue: 600 },
+{ brand: 'Samsung', model: 'Galaxy J7 Neo',      marketValue: 620 },
+{ brand: 'Samsung', model: 'Galaxy J7 Prime',    marketValue: 650 },
+{ brand: 'Samsung', model: 'Galaxy J7 Prime 2',  marketValue: 670 },
+{ brand: 'Samsung', model: 'Galaxy J7 Pro',      marketValue: 700 },
+{ brand: 'Samsung', model: 'Galaxy J7 Duo',      marketValue: 680 },
+{ brand: 'Samsung', model: 'Galaxy J8',          marketValue: 750 },
 
-    // ─────────────────────────────────────────
-    // SAMSUNG GALAXY A
-    // ─────────────────────────────────────────
-    { brand: 'Samsung', model: 'Galaxy A01',         marketValue: 450 },
-    { brand: 'Samsung', model: 'Galaxy A01 Core',    marketValue: 420 },
-    { brand: 'Samsung', model: 'Galaxy A02',         marketValue: 550 },
-    { brand: 'Samsung', model: 'Galaxy A02s',        marketValue: 600 },
-    { brand: 'Samsung', model: 'Galaxy A03',         marketValue: 650 },
-    { brand: 'Samsung', model: 'Galaxy A03 Core',    marketValue: 580 },
-    { brand: 'Samsung', model: 'Galaxy A03s',        marketValue: 700 },
-    { brand: 'Samsung', model: 'Galaxy A04',         marketValue: 750 },
-    { brand: 'Samsung', model: 'Galaxy A04e',        marketValue: 700 },
-    { brand: 'Samsung', model: 'Galaxy A04s',        marketValue: 800 },
-    { brand: 'Samsung', model: 'Galaxy A05',         marketValue: 850 },
-    { brand: 'Samsung', model: 'Galaxy A05s',        marketValue: 900 },
-    { brand: 'Samsung', model: 'Galaxy A06',         marketValue: 950 },
-    { brand: 'Samsung', model: 'Galaxy A10',         marketValue: 600 },
-    { brand: 'Samsung', model: 'Galaxy A10e',        marketValue: 580 },
-    { brand: 'Samsung', model: 'Galaxy A10s',        marketValue: 650 },
-    { brand: 'Samsung', model: 'Galaxy A11',         marketValue: 700 },
-    { brand: 'Samsung', model: 'Galaxy A12',         marketValue: 850 },
-    { brand: 'Samsung', model: 'Galaxy A12 Nacho',   marketValue: 870 },
-    { brand: 'Samsung', model: 'Galaxy A13',         marketValue: 1000 },
-    { brand: 'Samsung', model: 'Galaxy A13 5G',      marketValue: 1100 },
-    { brand: 'Samsung', model: 'Galaxy A14',         marketValue: 1200 },
-    { brand: 'Samsung', model: 'Galaxy A14 5G',      marketValue: 1300 },
-    { brand: 'Samsung', model: 'Galaxy A15',         marketValue: 1400 },
-    { brand: 'Samsung', model: 'Galaxy A15 5G',      marketValue: 1500 },
-    { brand: 'Samsung', model: 'Galaxy A16',         marketValue: 1600 },
-    { brand: 'Samsung', model: 'Galaxy A16 5G',      marketValue: 1700 },
-    { brand: 'Samsung', model: 'Galaxy A20',         marketValue: 750 },
-    { brand: 'Samsung', model: 'Galaxy A20e',        marketValue: 730 },
-    { brand: 'Samsung', model: 'Galaxy A20s',        marketValue: 800 },
-    { brand: 'Samsung', model: 'Galaxy A21',         marketValue: 850 },
-    { brand: 'Samsung', model: 'Galaxy A21s',        marketValue: 900 },
-    { brand: 'Samsung', model: 'Galaxy A22',         marketValue: 1100 },
-    { brand: 'Samsung', model: 'Galaxy A22 5G',      marketValue: 1200 },
-    { brand: 'Samsung', model: 'Galaxy A23',         marketValue: 1300 },
-    { brand: 'Samsung', model: 'Galaxy A23 5G',      marketValue: 1400 },
-    { brand: 'Samsung', model: 'Galaxy A24',         marketValue: 1500 },
-    { brand: 'Samsung', model: 'Galaxy A24 5G',      marketValue: 1600 },
-    { brand: 'Samsung', model: 'Galaxy A25',         marketValue: 1800 },
-    { brand: 'Samsung', model: 'Galaxy A25 5G',      marketValue: 1900 },
-    { brand: 'Samsung', model: 'Galaxy A26',         marketValue: 2100 },
-    { brand: 'Samsung', model: 'Galaxy A26 5G',      marketValue: 2200 },
-    { brand: 'Samsung', model: 'Galaxy A30',         marketValue: 850 },
-    { brand: 'Samsung', model: 'Galaxy A30s',        marketValue: 900 },
-    { brand: 'Samsung', model: 'Galaxy A31',         marketValue: 950 },
-    { brand: 'Samsung', model: 'Galaxy A32',         marketValue: 1150 },
-    { brand: 'Samsung', model: 'Galaxy A32 5G',      marketValue: 1250 },
-    { brand: 'Samsung', model: 'Galaxy A33',         marketValue: 1450 },
-    { brand: 'Samsung', model: 'Galaxy A33 5G',      marketValue: 1550 },
-    { brand: 'Samsung', model: 'Galaxy A34',         marketValue: 1750 },
-    { brand: 'Samsung', model: 'Galaxy A34 5G',      marketValue: 1850 },
-    { brand: 'Samsung', model: 'Galaxy A35',         marketValue: 2100 },
-    { brand: 'Samsung', model: 'Galaxy A35 5G',      marketValue: 2200 },
-    { brand: 'Samsung', model: 'Galaxy A36',         marketValue: 2400 },
-    { brand: 'Samsung', model: 'Galaxy A36 5G',      marketValue: 2500 },
-    { brand: 'Samsung', model: 'Galaxy A50',         marketValue: 950 },
-    { brand: 'Samsung', model: 'Galaxy A50s',        marketValue: 1000 },
-    { brand: 'Samsung', model: 'Galaxy A51',         marketValue: 1050 },
-    { brand: 'Samsung', model: 'Galaxy A51 5G',      marketValue: 1150 },
-    { brand: 'Samsung', model: 'Galaxy A52',         marketValue: 1450 },
-    { brand: 'Samsung', model: 'Galaxy A52 5G',      marketValue: 1550 },
-    { brand: 'Samsung', model: 'Galaxy A52s',        marketValue: 1600 },
-    { brand: 'Samsung', model: 'Galaxy A53',         marketValue: 1750 },
-    { brand: 'Samsung', model: 'Galaxy A53 5G',      marketValue: 1850 },
-    { brand: 'Samsung', model: 'Galaxy A54',         marketValue: 2100 },
-    { brand: 'Samsung', model: 'Galaxy A54 5G',      marketValue: 2200 },
-    { brand: 'Samsung', model: 'Galaxy A55',         marketValue: 2500 },
-    { brand: 'Samsung', model: 'Galaxy A55 5G',      marketValue: 2600 },
-    { brand: 'Samsung', model: 'Galaxy A56',         marketValue: 2900 },
-    { brand: 'Samsung', model: 'Galaxy A56 5G',      marketValue: 3000 },
-    { brand: 'Samsung', model: 'Galaxy A70',         marketValue: 1100 },
-    { brand: 'Samsung', model: 'Galaxy A70s',        marketValue: 1200 },
-    { brand: 'Samsung', model: 'Galaxy A71',         marketValue: 1300 },
-    { brand: 'Samsung', model: 'Galaxy A71 5G',      marketValue: 1450 },
-    { brand: 'Samsung', model: 'Galaxy A72',         marketValue: 1800 },
-    { brand: 'Samsung', model: 'Galaxy A73',         marketValue: 2200 },
-    { brand: 'Samsung', model: 'Galaxy A73 5G',      marketValue: 2400 },
-    { brand: 'Samsung', model: 'Galaxy A80',         marketValue: 1400 },
-
+// ─────────────────────────────────────────
+// SAMSUNG GALAXY A
+// ─────────────────────────────────────────
+{ brand: 'Samsung', model: 'Galaxy A01',         marketValue: 450 },
+{ brand: 'Samsung', model: 'Galaxy A01 Core',    marketValue: 420 },
+{ brand: 'Samsung', model: 'Galaxy A02',         marketValue: 550 },
+{ brand: 'Samsung', model: 'Galaxy A02s',        marketValue: 600 },
+{ brand: 'Samsung', model: 'Galaxy A03',         marketValue: 650 },
+{ brand: 'Samsung', model: 'Galaxy A03 Core',    marketValue: 580 },
+{ brand: 'Samsung', model: 'Galaxy A03s',        marketValue: 700 },
+{ brand: 'Samsung', model: 'Galaxy A04',         marketValue: 750 },
+{ brand: 'Samsung', model: 'Galaxy A04e',        marketValue: 700 },
+{ brand: 'Samsung', model: 'Galaxy A04s',        marketValue: 800 },
+{ brand: 'Samsung', model: 'Galaxy A05',         marketValue: 850 },
+{ brand: 'Samsung', model: 'Galaxy A05s',        marketValue: 900 },
+{ brand: 'Samsung', model: 'Galaxy A06',         marketValue: 950 },
+{ brand: 'Samsung', model: 'Galaxy A06s',        marketValue: 1000 },
+{ brand: 'Samsung', model: 'Galaxy A07',         marketValue: 900 },
+{ brand: 'Samsung', model: 'Galaxy A10',         marketValue: 600 },
+{ brand: 'Samsung', model: 'Galaxy A10e',        marketValue: 580 },
+{ brand: 'Samsung', model: 'Galaxy A10s',        marketValue: 650 },
+{ brand: 'Samsung', model: 'Galaxy A11',         marketValue: 700 },
+{ brand: 'Samsung', model: 'Galaxy A12',         marketValue: 850 },
+{ brand: 'Samsung', model: 'Galaxy A12 Nacho',   marketValue: 870 },
+{ brand: 'Samsung', model: 'Galaxy A13',         marketValue: 1000 },
+{ brand: 'Samsung', model: 'Galaxy A13 5G',      marketValue: 1100 },
+{ brand: 'Samsung', model: 'Galaxy A14',         marketValue: 1200 },
+{ brand: 'Samsung', model: 'Galaxy A14 5G',      marketValue: 1300 },
+{ brand: 'Samsung', model: 'Galaxy A15',         marketValue: 1400 },
+{ brand: 'Samsung', model: 'Galaxy A15 5G',      marketValue: 1500 },
+{ brand: 'Samsung', model: 'Galaxy A16',         marketValue: 1600 },
+{ brand: 'Samsung', model: 'Galaxy A16 5G',      marketValue: 1700 },
+{ brand: 'Samsung', model: 'Galaxy A17',         marketValue: 1800 },
+{ brand: 'Samsung', model: 'Galaxy A20',         marketValue: 750 },
+{ brand: 'Samsung', model: 'Galaxy A20e',        marketValue: 730 },
+{ brand: 'Samsung', model: 'Galaxy A20s',        marketValue: 800 },
+{ brand: 'Samsung', model: 'Galaxy A21',         marketValue: 850 },
+{ brand: 'Samsung', model: 'Galaxy A21s',        marketValue: 900 },
+{ brand: 'Samsung', model: 'Galaxy A22',         marketValue: 1100 },
+{ brand: 'Samsung', model: 'Galaxy A22 5G',      marketValue: 1200 },
+{ brand: 'Samsung', model: 'Galaxy A23',         marketValue: 1300 },
+{ brand: 'Samsung', model: 'Galaxy A23 5G',      marketValue: 1400 },
+{ brand: 'Samsung', model: 'Galaxy A24',         marketValue: 1500 },
+{ brand: 'Samsung', model: 'Galaxy A24 5G',      marketValue: 1600 },
+{ brand: 'Samsung', model: 'Galaxy A25',         marketValue: 1800 },
+{ brand: 'Samsung', model: 'Galaxy A25 5G',      marketValue: 1900 },
+{ brand: 'Samsung', model: 'Galaxy A26',         marketValue: 2100 },
+{ brand: 'Samsung', model: 'Galaxy A26 5G',      marketValue: 2200 },
+{ brand: 'Samsung', model: 'Galaxy A30',         marketValue: 850 },
+{ brand: 'Samsung', model: 'Galaxy A30s',        marketValue: 900 },
+{ brand: 'Samsung', model: 'Galaxy A31',         marketValue: 950 },
+{ brand: 'Samsung', model: 'Galaxy A32',         marketValue: 1150 },
+{ brand: 'Samsung', model: 'Galaxy A32 5G',      marketValue: 1250 },
+{ brand: 'Samsung', model: 'Galaxy A33',         marketValue: 1450 },
+{ brand: 'Samsung', model: 'Galaxy A33 5G',      marketValue: 1550 },
+{ brand: 'Samsung', model: 'Galaxy A34',         marketValue: 1750 },
+{ brand: 'Samsung', model: 'Galaxy A34 5G',      marketValue: 1850 },
+{ brand: 'Samsung', model: 'Galaxy A35',         marketValue: 2100 },
+{ brand: 'Samsung', model: 'Galaxy A35 5G',      marketValue: 2200 },
+{ brand: 'Samsung', model: 'Galaxy A36',         marketValue: 2400 },
+{ brand: 'Samsung', model: 'Galaxy A36 5G',      marketValue: 2500 },
+{ brand: 'Samsung', model: 'Galaxy A37',         marketValue: 2700 },
+{ brand: 'Samsung', model: 'Galaxy A50',         marketValue: 950 },
+{ brand: 'Samsung', model: 'Galaxy A50s',        marketValue: 1000 },
+{ brand: 'Samsung', model: 'Galaxy A51',         marketValue: 1050 },
+{ brand: 'Samsung', model: 'Galaxy A51 5G',      marketValue: 1150 },
+{ brand: 'Samsung', model: 'Galaxy A52',         marketValue: 1450 },
+{ brand: 'Samsung', model: 'Galaxy A52 5G',      marketValue: 1550 },
+{ brand: 'Samsung', model: 'Galaxy A52s',        marketValue: 1600 },
+{ brand: 'Samsung', model: 'Galaxy A53',         marketValue: 1750 },
+{ brand: 'Samsung', model: 'Galaxy A53 5G',      marketValue: 1850 },
+{ brand: 'Samsung', model: 'Galaxy A54',         marketValue: 2100 },
+{ brand: 'Samsung', model: 'Galaxy A54 5G',      marketValue: 2200 },
+{ brand: 'Samsung', model: 'Galaxy A55',         marketValue: 2500 },
+{ brand: 'Samsung', model: 'Galaxy A55 5G',      marketValue: 2600 },
+{ brand: 'Samsung', model: 'Galaxy A56',         marketValue: 2900 },
+{ brand: 'Samsung', model: 'Galaxy A56 5G',      marketValue: 3000 },
+{ brand: 'Samsung', model: 'Galaxy A57',         marketValue: 3200 },
+{ brand: 'Samsung', model: 'Galaxy A70',         marketValue: 1100 },
+{ brand: 'Samsung', model: 'Galaxy A70s',        marketValue: 1200 },
+{ brand: 'Samsung', model: 'Galaxy A71',         marketValue: 1300 },
+{ brand: 'Samsung', model: 'Galaxy A71 5G',      marketValue: 1450 },
+{ brand: 'Samsung', model: 'Galaxy A72',         marketValue: 1800 },
+{ brand: 'Samsung', model: 'Galaxy A73',         marketValue: 2200 },
+{ brand: 'Samsung', model: 'Galaxy A73 5G',      marketValue: 2400 },
+{ brand: 'Samsung', model: 'Galaxy A80',         marketValue: 1400 },
     // ─────────────────────────────────────────
     // SAMSUNG GALAXY M
     // ─────────────────────────────────────────
@@ -193,7 +205,15 @@ async function main() {
     { brand: 'Samsung', model: 'Galaxy M54 5G',      marketValue: 2200 },
     { brand: 'Samsung', model: 'Galaxy M55',         marketValue: 2400 },
     { brand: 'Samsung', model: 'Galaxy M55 5G',      marketValue: 2500 },
-
+    { brand: 'Samsung', model: 'Galaxy M04s',        marketValue: 680 },
+    { brand: 'Samsung', model: 'Galaxy M05',         marketValue: 700 },
+    { brand: 'Samsung', model: 'Galaxy M06',         marketValue: 750 },
+    { brand: 'Samsung', model: 'Galaxy M16',         marketValue: 1500 },
+    { brand: 'Samsung', model: 'Galaxy M16 5G',      marketValue: 1600 },
+    { brand: 'Samsung', model: 'Galaxy M36',         marketValue: 2100 },
+    { brand: 'Samsung', model: 'Galaxy M36 5G',      marketValue: 2200 },
+    { brand: 'Samsung', model: 'Galaxy M56',         marketValue: 2600 },
+    { brand: 'Samsung', model: 'Galaxy M56 5G',      marketValue: 2700 },
     // ─────────────────────────────────────────
     // SAMSUNG GALAXY F
     // ─────────────────────────────────────────
@@ -213,7 +233,11 @@ async function main() {
     { brand: 'Samsung', model: 'Galaxy F54',         marketValue: 2100 },
     { brand: 'Samsung', model: 'Galaxy F54 5G',      marketValue: 2200 },
     { brand: 'Samsung', model: 'Galaxy F62',         marketValue: 1500 },
-
+    { brand: 'Samsung', model: 'Galaxy F05',         marketValue: 650 },
+    { brand: 'Samsung', model: 'Galaxy F06',         marketValue: 700 },
+    { brand: 'Samsung', model: 'Galaxy F15 5G',      marketValue: 1300 },
+    { brand: 'Samsung', model: 'Galaxy F55',         marketValue: 2300 },
+    { brand: 'Samsung', model: 'Galaxy F55 5G',      marketValue: 2400 },
     // ─────────────────────────────────────────
     // SAMSUNG GALAXY S
     // ─────────────────────────────────────────
@@ -251,7 +275,10 @@ async function main() {
     { brand: 'Samsung', model: 'Galaxy S25 Plus',    marketValue: 7200 },
     { brand: 'Samsung', model: 'Galaxy S25 Edge',    marketValue: 8000 },
     { brand: 'Samsung', model: 'Galaxy S25 Ultra',   marketValue: 9500 },
-
+    { brand: 'Samsung', model: 'Galaxy S10 Lite',    marketValue: 2100 },
+    { brand: 'Samsung', model: 'Galaxy S20 5G',      marketValue: 2500 },
+    { brand: 'Samsung', model: 'Galaxy S20 Plus 5G', marketValue: 2800 },
+    { brand: 'Samsung', model: 'Galaxy S25 FE',      marketValue: 5500 },
     // ─────────────────────────────────────────
     // SAMSUNG GALAXY Z (DOBRÁVEIS)
     // ─────────────────────────────────────────
@@ -266,7 +293,9 @@ async function main() {
     { brand: 'Samsung', model: 'Galaxy Z Fold 5',    marketValue: 7800 },
     { brand: 'Samsung', model: 'Galaxy Z Fold 6',    marketValue: 9000 },
     { brand: 'Samsung', model: 'Galaxy Z Fold 7',    marketValue: 10500 },
-
+    { brand: 'Samsung', model: 'Galaxy Z Flip 7 FE',    marketValue: 5200 },
+    { brand: 'Samsung', model: 'Galaxy Z Fold 3 5G',    marketValue: 5600 },
+    { brand: 'Samsung', model: 'Galaxy Z Fold Special Edition', marketValue: 11000 },
     // ─────────────────────────────────────────
     // SAMSUNG GALAXY NOTE
     // ─────────────────────────────────────────
@@ -277,7 +306,10 @@ async function main() {
     { brand: 'Samsung', model: 'Galaxy Note 10 Lite', marketValue: 1800 },
     { brand: 'Samsung', model: 'Galaxy Note 20',     marketValue: 2900 },
     { brand: 'Samsung', model: 'Galaxy Note 20 Ultra', marketValue: 3800 },
-
+    { brand: 'Samsung', model: 'Galaxy Note 10 5G',      marketValue: 2400 },
+    { brand: 'Samsung', model: 'Galaxy Note 10 Plus 5G', marketValue: 2800 },
+    { brand: 'Samsung', model: 'Galaxy Note 20 5G',      marketValue: 3000 },
+    { brand: 'Samsung', model: 'Galaxy Note 20 Ultra 5G', marketValue: 4000 },
     // ─────────────────────────────────────────
     // MOTOROLA MOTO E
     // ─────────────────────────────────────────
@@ -298,7 +330,10 @@ async function main() {
     { brand: 'Motorola', model: 'Moto E32s',         marketValue: 920 },
     { brand: 'Motorola', model: 'Moto E40',          marketValue: 900 },
     { brand: 'Motorola', model: 'Moto E50',          marketValue: 1000 },
-
+    { brand: 'Motorola', model: 'Moto E15',          marketValue: 850 },
+    { brand: 'Motorola', model: 'Moto E15 Power',    marketValue: 880 },
+    { brand: 'Motorola', model: 'Moto E30',          marketValue: 800 },
+    { brand: 'Motorola', model: 'Moto E50 Power',    marketValue: 1050 },
     // ─────────────────────────────────────────
     // MOTOROLA MOTO G
     // ─────────────────────────────────────────
@@ -353,7 +388,17 @@ async function main() {
     { brand: 'Motorola', model: 'Moto G Stylus 2024', marketValue: 2200 },
     { brand: 'Motorola', model: 'Moto G Play 2023',  marketValue: 1100 },
     { brand: 'Motorola', model: 'Moto G Play 2024',  marketValue: 1200 },
-
+    { brand: 'Motorola', model: 'Moto G15',          marketValue: 1300 },
+    { brand: 'Motorola', model: 'Moto G15 Power',    marketValue: 1400 },
+    { brand: 'Motorola', model: 'Moto G35',          marketValue: 1700 },
+    { brand: 'Motorola', model: 'Moto G35 5G',       marketValue: 1800 },
+    { brand: 'Motorola', model: 'Moto G45',          marketValue: 1900 },
+    { brand: 'Motorola', model: 'Moto G45 5G',       marketValue: 2000 },
+    { brand: 'Motorola', model: 'Moto G75',          marketValue: 2800 },
+    { brand: 'Motorola', model: 'Moto G75 5G',       marketValue: 2900 },
+    { brand: 'Motorola', model: 'Moto G Power 2025', marketValue: 1900 },
+    { brand: 'Motorola', model: 'Moto G Stylus 2025', marketValue: 2300 },
+    { brand: 'Motorola', model: 'Moto G Play 2025',  marketValue: 1300 },
     // ─────────────────────────────────────────
     // MOTOROLA EDGE
     // ─────────────────────────────────────────
@@ -377,7 +422,8 @@ async function main() {
     { brand: 'Motorola', model: 'Edge 60',           marketValue: 4000 },
     { brand: 'Motorola', model: 'Edge 60 Pro',       marketValue: 4800 },
     { brand: 'Motorola', model: 'Edge 60 Ultra',     marketValue: 5800 },
-
+    { brand: 'Motorola', model: 'Edge 60 Fusion',    marketValue: 3800 },
+    { brand: 'Motorola', model: 'Edge 60 Neo',       marketValue: 3400 },
     // ─────────────────────────────────────────
     // MOTOROLA RAZR
     // ─────────────────────────────────────────
@@ -388,7 +434,9 @@ async function main() {
     { brand: 'Motorola', model: 'Razr 2023',         marketValue: 5200 },
     { brand: 'Motorola', model: 'ThinkPhone',        marketValue: 4500 },
     { brand: 'Motorola', model: 'ThinkPhone 25',     marketValue: 5000 },
-
+    { brand: 'Motorola', model: 'Razr 50s',          marketValue: 5800 },
+    { brand: 'Motorola', model: 'Razr 2024',         marketValue: 5700 },
+    { brand: 'Motorola', model: 'Razr 2025',         marketValue: 6000 },
     // ─────────────────────────────────────────
     // XIAOMI
     // ─────────────────────────────────────────
@@ -420,7 +468,15 @@ async function main() {
     { brand: 'Xiaomi', model: 'Xiaomi 15T Pro',      marketValue: 5300 },
     { brand: 'Xiaomi', model: 'Xiaomi Mix Fold 4',   marketValue: 9500 },
     { brand: 'Xiaomi', model: 'Xiaomi Mix Flip',     marketValue: 6500 },
-
+    { brand: 'Xiaomi', model: 'Xiaomi 12S',          marketValue: 3600 },
+    { brand: 'Xiaomi', model: 'Xiaomi 12S Pro',      marketValue: 4200 },
+    { brand: 'Xiaomi', model: 'Xiaomi 12S Ultra',    marketValue: 5800 },
+    { brand: 'Xiaomi', model: 'Xiaomi 13C',          marketValue: 1800 },
+    { brand: 'Xiaomi', model: 'Xiaomi 14C',          marketValue: 2000 },
+    { brand: 'Xiaomi', model: 'Xiaomi 15C',          marketValue: 2200 },
+    { brand: 'Xiaomi', model: 'Xiaomi 15T',          marketValue: 4800 },
+    { brand: 'Xiaomi', model: 'Xiaomi Mix Fold 3',   marketValue: 8500 },
+    { brand: 'Xiaomi', model: 'Xiaomi Mix Fold 5',   marketValue: 10500 },
     // ─────────────────────────────────────────
     // REDMI
     // ─────────────────────────────────────────
@@ -479,7 +535,21 @@ async function main() {
     { brand: 'Redmi', model: 'Redmi A3x',            marketValue: 670 },
     { brand: 'Redmi', model: 'Redmi K70',            marketValue: 3200 },
     { brand: 'Redmi', model: 'Redmi K70 Pro',        marketValue: 3800 },
-
+    { brand: 'Redmi', model: 'Redmi 10 5G',          marketValue: 950 },
+    { brand: 'Redmi', model: 'Redmi 12A',            marketValue: 800 },
+    { brand: 'Redmi', model: 'Redmi 13A',            marketValue: 900 },
+    { brand: 'Redmi', model: 'Redmi 14A',            marketValue: 950 },
+    { brand: 'Redmi', model: 'Redmi 15',             marketValue: 1300 },
+    { brand: 'Redmi', model: 'Redmi 15C',            marketValue: 1100 },
+    { brand: 'Redmi', model: 'Redmi Note 15',        marketValue: 2200 },
+    { brand: 'Redmi', model: 'Redmi Note 15 Pro',    marketValue: 2900 },
+    { brand: 'Redmi', model: 'Redmi Note 15 Pro+',   marketValue: 3500 },
+    { brand: 'Redmi', model: 'Redmi Note 15 5G',     marketValue: 2300 },
+    { brand: 'Redmi', model: 'Redmi A4',             marketValue: 700 },
+    { brand: 'Redmi', model: 'Redmi A4x',            marketValue: 720 },
+    { brand: 'Redmi', model: 'Redmi K70 Ultra',      marketValue: 4200 },
+    { brand: 'Redmi', model: 'Redmi K80',            marketValue: 3500 },
+    { brand: 'Redmi', model: 'Redmi K80 Pro',        marketValue: 4200 },
     // ─────────────────────────────────────────
     // POCO
     // ─────────────────────────────────────────
@@ -526,7 +596,15 @@ async function main() {
     { brand: 'Poco', model: 'Poco F5 Pro',           marketValue: 3200 },
     { brand: 'Poco', model: 'Poco F6',               marketValue: 3300 },
     { brand: 'Poco', model: 'Poco F6 Pro',           marketValue: 3900 },
-
+    { brand: 'Poco', model: 'Poco C61',              marketValue: 1050 },
+    { brand: 'Poco', model: 'Poco C91',              marketValue: 1100 },
+    { brand: 'Poco', model: 'Poco M7',               marketValue: 1400 },
+    { brand: 'Poco', model: 'Poco M7 Pro',           marketValue: 1700 },
+    { brand: 'Poco', model: 'Poco M7 Pro 5G',        marketValue: 1800 },
+    { brand: 'Poco', model: 'Poco X6 Pro 5G',        marketValue: 2900 },
+    { brand: 'Poco', model: 'Poco F7',               marketValue: 3500 },
+    { brand: 'Poco', model: 'Poco F7 Pro',           marketValue: 4200 },
+    { brand: 'Poco', model: 'Poco F7 Ultra',         marketValue: 5000 },
     // ─────────────────────────────────────────
     // REALME
     // ─────────────────────────────────────────
@@ -588,7 +666,18 @@ async function main() {
     { brand: 'Realme', model: 'Realme GT 6',         marketValue: 4500 },
     { brand: 'Realme', model: 'Realme GT 7 Pro',     marketValue: 5000 },
     { brand: 'Realme', model: 'Realme GT 7',         marketValue: 4000 },
-
+    { brand: 'Realme', model: 'Realme C71',          marketValue: 1050 },
+    { brand: 'Realme', model: 'Realme C75',          marketValue: 1150 },
+    { brand: 'Realme', model: 'Realme C75 5G',       marketValue: 1250 },
+    { brand: 'Realme', model: 'Realme 13 5G',        marketValue: 2600 },
+    { brand: 'Realme', model: 'Realme 13x 5G',       marketValue: 2200 },
+    { brand: 'Realme', model: 'Realme 14',           marketValue: 2700 },
+    { brand: 'Realme', model: 'Realme 14 Pro',       marketValue: 3100 },
+    { brand: 'Realme', model: 'Realme 14 Pro+',      marketValue: 3600 },
+    { brand: 'Realme', model: 'Realme 14x 5G',       marketValue: 2400 },
+    { brand: 'Realme', model: 'Realme GT Neo 5 SE',  marketValue: 3200 },
+    { brand: 'Realme', model: 'Realme GT 6T',        marketValue: 4200 },
+    { brand: 'Realme', model: 'Realme GT 7T',        marketValue: 4600 },
     // ─────────────────────────────────────────
     // ASUS
     // ─────────────────────────────────────────
@@ -613,7 +702,11 @@ async function main() {
     { brand: 'Asus', model: 'ROG Phone 9',           marketValue: 8000 },
     { brand: 'Asus', model: 'ROG Phone 9 Pro',       marketValue: 9200 },
     { brand: 'Asus', model: 'ROG Phone 9 FE',        marketValue: 6500 },
-
+    { brand: 'Asus', model: 'Zenfone 11',            marketValue: 4800 },
+    { brand: 'Asus', model: 'Zenfone 12 Ultra',      marketValue: 6200 },
+    { brand: 'Asus', model: 'ROG Phone 5 Pro',       marketValue: 5800 },
+    { brand: 'Asus', model: 'ROG Phone 8 Pro+',      marketValue: 9000 },
+    { brand: 'Asus', model: 'ROG Phone 9 Pro+',      marketValue: 10000 },
     // ─────────────────────────────────────────
     // LG
     // ─────────────────────────────────────────
@@ -640,7 +733,13 @@ async function main() {
     { brand: 'LG', model: 'LG V60 ThinQ 5G',         marketValue: 2300 },
     { brand: 'LG', model: 'LG G8s ThinQ',            marketValue: 1600 },
     { brand: 'LG', model: 'LG G8X ThinQ',            marketValue: 1800 },
-
+    { brand: 'LG', model: 'LG K40s',                marketValue: 680 },
+    { brand: 'LG', model: 'LG K50s',                marketValue: 780 },
+    { brand: 'LG', model: 'LG K50',                 marketValue: 750 },
+    { brand: 'LG', model: 'LG K61',                 marketValue: 950 },
+    { brand: 'LG', model: 'LG Q51',                 marketValue: 850 },
+    { brand: 'LG', model: 'LG Q70',                 marketValue: 1100 },
+    { brand: 'LG', model: 'LG Stylo 7',             marketValue: 1200 },
     // ─────────────────────────────────────────
     // NOKIA
     // ─────────────────────────────────────────
@@ -670,7 +769,15 @@ async function main() {
     { brand: 'Nokia', model: 'Nokia X30 5G',         marketValue: 1900 },
     { brand: 'Nokia', model: 'Nokia XR20',           marketValue: 2000 },
     { brand: 'Nokia', model: 'Nokia XR21',           marketValue: 2200 },
-
+    { brand: 'Nokia', model: 'Nokia C02 Plus',       marketValue: 570 },
+    { brand: 'Nokia', model: 'Nokia C12 Plus',       marketValue: 620 },
+    { brand: 'Nokia', model: 'Nokia C22',            marketValue: 700 },
+    { brand: 'Nokia', model: 'Nokia C32 Plus',       marketValue: 850 },
+    { brand: 'Nokia', model: 'Nokia G11 Plus',       marketValue: 820 },
+    { brand: 'Nokia', model: 'Nokia G310',           marketValue: 1100 },
+    { brand: 'Nokia', model: 'Nokia G310 5G',        marketValue: 1200 },
+    { brand: 'Nokia', model: 'Nokia G400',           marketValue: 1300 },
+    { brand: 'Nokia', model: 'Nokia G400 5G',        marketValue: 1400 },
     // ─────────────────────────────────────────
     // POSITIVO
     // ─────────────────────────────────────────
@@ -687,7 +794,13 @@ async function main() {
     { brand: 'Positivo', model: 'Vision 6 Plus',     marketValue: 850 },
     { brand: 'Positivo', model: 'Vision C',          marketValue: 550 },
     { brand: 'Positivo', model: 'Vision Q',          marketValue: 650 },
-
+    { brand: 'Positivo', model: 'Twist 10',          marketValue: 1200 },
+    { brand: 'Positivo', model: 'Twist 10 Pro',      marketValue: 1400 },
+    { brand: 'Positivo', model: 'S680',              marketValue: 850 },
+    { brand: 'Positivo', model: 'S790',              marketValue: 1000 },
+    { brand: 'Positivo', model: 'Vision 8',          marketValue: 1000 },
+    { brand: 'Positivo', model: 'Vision 8 Plus',     marketValue: 1150 },
+    { brand: 'Positivo', model: 'Vision Pro',        marketValue: 1300 },
     // ─────────────────────────────────────────
     // MULTILASER
     // ─────────────────────────────────────────
@@ -700,7 +813,12 @@ async function main() {
     { brand: 'Multilaser', model: 'F3',              marketValue: 520 },
     { brand: 'Multilaser', model: 'G3',              marketValue: 560 },
     { brand: 'Multilaser', model: 'H Pro',           marketValue: 650 },
-
+    { brand: 'Multilaser', model: 'F6',              marketValue: 560 },
+    { brand: 'Multilaser', model: 'G4',              marketValue: 620 },
+    { brand: 'Multilaser', model: 'G5',              marketValue: 680 },
+    { brand: 'Multilaser', model: 'MS80',            marketValue: 650 },
+    { brand: 'Multilaser', model: 'Zap 4',           marketValue: 600 },
+    { brand: 'Multilaser', model: 'Zap 5G',          marketValue: 750 },
     // ─────────────────────────────────────────
     // TCL
     // ─────────────────────────────────────────
@@ -722,7 +840,14 @@ async function main() {
     { brand: 'TCL', model: 'TCL 40 NXTPaper',       marketValue: 1300 },
     { brand: 'TCL', model: 'TCL 50 SE',             marketValue: 1100 },
     { brand: 'TCL', model: 'TCL 50 XL',             marketValue: 1300 },
-
+    { brand: 'TCL', model: 'TCL 30 XE',             marketValue: 800 },
+    { brand: 'TCL', model: 'TCL 40 Plus',           marketValue: 1200 },
+    { brand: 'TCL', model: 'TCL 40 5G',             marketValue: 1150 },
+    { brand: 'TCL', model: 'TCL 50 5G',             marketValue: 1200 },
+    { brand: 'TCL', model: 'TCL 50 Pro',            marketValue: 1500 },
+    { brand: 'TCL', model: 'TCL 50 NXTPaper',       marketValue: 1600 },
+    { brand: 'TCL', model: 'TCL 60 SE',             marketValue: 1400 },
+    { brand: 'TCL', model: 'TCL 60 XL',             marketValue: 1600 },
     // ─────────────────────────────────────────
     // ONEPLUS
     // ─────────────────────────────────────────
@@ -748,7 +873,13 @@ async function main() {
     { brand: 'OnePlus', model: 'OnePlus 13R',            marketValue: 4200 },
     { brand: 'OnePlus', model: 'OnePlus Ace 3V',         marketValue: 3000 },
     { brand: 'OnePlus', model: 'OnePlus Open',           marketValue: 7500 },
-
+    { brand: 'OnePlus', model: 'OnePlus Nord CE 4 Pro',  marketValue: 2700 },
+    { brand: 'OnePlus', model: 'OnePlus Nord 5',         marketValue: 3500 },
+    { brand: 'OnePlus', model: 'OnePlus Nord 5 5G',      marketValue: 3600 },
+    { brand: 'OnePlus', model: 'OnePlus 13T',            marketValue: 5000 },
+    { brand: 'OnePlus', model: 'OnePlus Ace 3',          marketValue: 3500 },
+    { brand: 'OnePlus', model: 'OnePlus Ace 3 Pro',      marketValue: 4200 },
+    { brand: 'OnePlus', model: 'OnePlus Open 2',         marketValue: 8500 },
     // ─────────────────────────────────────────
     // NOTHING
     // ─────────────────────────────────────────
@@ -759,7 +890,9 @@ async function main() {
     { brand: 'Nothing', model: 'Nothing Phone 3a',   marketValue: 3000 },
     { brand: 'Nothing', model: 'Nothing Phone 3',    marketValue: 4200 },
     { brand: 'Nothing', model: 'Nothing CMF Phone 1', marketValue: 1800 },
-
+    { brand: 'Nothing', model: 'Nothing Phone 3a Pro',  marketValue: 3300 },
+    { brand: 'Nothing', model: 'Nothing CMF Phone 2',   marketValue: 2000 },
+    { brand: 'Nothing', model: 'Nothing CMF Phone 2 Pro', marketValue: 2400 },
     // ─────────────────────────────────────────
     // GOOGLE PIXEL
     // ─────────────────────────────────────────
@@ -781,7 +914,13 @@ async function main() {
     { brand: 'Google', model: 'Pixel 9 Pro XL',      marketValue: 5800 },
     { brand: 'Google', model: 'Pixel 9 Pro Fold',    marketValue: 8500 },
     { brand: 'Google', model: 'Pixel 9a',            marketValue: 3300 },
-
+    { brand: 'Google', model: 'Pixel 6 Fold',        marketValue: 6500 },
+    { brand: 'Google', model: 'Pixel 9 Fold',        marketValue: 9000 },
+    { brand: 'Google', model: 'Pixel 10',            marketValue: 4500 },
+    { brand: 'Google', model: 'Pixel 10 Pro',        marketValue: 5800 },
+    { brand: 'Google', model: 'Pixel 10 Pro XL',     marketValue: 6500 },
+    { brand: 'Google', model: 'Pixel 10 Pro Fold',   marketValue: 9500 },
+    { brand: 'Google', model: 'Pixel 10a',           marketValue: 3600 },
     // ─────────────────────────────────────────
     // HUAWEI
     // ─────────────────────────────────────────
@@ -809,7 +948,18 @@ async function main() {
     { brand: 'Huawei', model: 'Mate 50 Pro',         marketValue: 4200 },
     { brand: 'Huawei', model: 'Mate 60 Pro',         marketValue: 5500 },
     { brand: 'Huawei', model: 'Pura 70 Pro',         marketValue: 5800 },
-
+    { brand: 'Huawei', model: 'P50 Pocket',          marketValue: 4500 },
+    { brand: 'Huawei', model: 'P60 Pro',             marketValue: 4200 },
+    { brand: 'Huawei', model: 'Nova 10',             marketValue: 2000 },
+    { brand: 'Huawei', model: 'Nova 10 Pro',         marketValue: 2500 },
+    { brand: 'Huawei', model: 'Nova 11 Pro',         marketValue: 2600 },
+    { brand: 'Huawei', model: 'Nova 12',             marketValue: 2300 },
+    { brand: 'Huawei', model: 'Nova 12 Pro',         marketValue: 2900 },
+    { brand: 'Huawei', model: 'Mate 60',             marketValue: 5000 },
+    { brand: 'Huawei', model: 'Mate 60 Pro+',        marketValue: 6200 },
+    { brand: 'Huawei', model: 'Mate X5',             marketValue: 9000 },
+    { brand: 'Huawei', model: 'Pura 70',             marketValue: 5000 },
+    { brand: 'Huawei', model: 'Pura 70 Ultra',       marketValue: 7000 },
     // ─────────────────────────────────────────
     // HONOR
     // ─────────────────────────────────────────
@@ -836,7 +986,18 @@ async function main() {
     { brand: 'Honor', model: 'Honor Magic 6 Pro',    marketValue: 5000 },
     { brand: 'Honor', model: 'Honor Magic V2',       marketValue: 7000 },
     { brand: 'Honor', model: 'Honor Magic Vs',       marketValue: 6500 },
-
+    { brand: 'Honor', model: 'Honor X6b',            marketValue: 880 },
+    { brand: 'Honor', model: 'Honor X9c',            marketValue: 1800 },
+    { brand: 'Honor', model: 'Honor 70',             marketValue: 1800 },
+    { brand: 'Honor', model: 'Honor 70 Lite',        marketValue: 1400 },
+    { brand: 'Honor', model: 'Honor 80',             marketValue: 2000 },
+    { brand: 'Honor', model: 'Honor 200 Lite',       marketValue: 2200 },
+    { brand: 'Honor', model: 'Honor 300',            marketValue: 3000 },
+    { brand: 'Honor', model: 'Honor 300 Pro',        marketValue: 3800 },
+    { brand: 'Honor', model: 'Honor Magic 6 Lite',   marketValue: 2200 },
+    { brand: 'Honor', model: 'Honor Magic 7 Pro',    marketValue: 5500 },
+    { brand: 'Honor', model: 'Honor Magic V3',       marketValue: 7500 },
+    { brand: 'Honor', model: 'Honor Magic Vs2',      marketValue: 7000 },
     // ─────────────────────────────────────────
     // VIVO
     // ─────────────────────────────────────────
@@ -889,7 +1050,20 @@ async function main() {
     { brand: 'Vivo', model: 'Vivo X100 Pro',         marketValue: 6200 },
     { brand: 'Vivo', model: 'Vivo X200',             marketValue: 5500 },
     { brand: 'Vivo', model: 'Vivo X200 Pro',         marketValue: 6800 },
-
+    { brand: 'Vivo', model: 'Vivo Y04',              marketValue: 650 },
+    { brand: 'Vivo', model: 'Vivo Y18e',             marketValue: 780 },
+    { brand: 'Vivo', model: 'Vivo Y28 5G',           marketValue: 1300 },
+    { brand: 'Vivo', model: 'Vivo Y38',              marketValue: 1400 },
+    { brand: 'Vivo', model: 'Vivo Y38 5G',           marketValue: 1500 },
+    { brand: 'Vivo', model: 'Vivo Y58',              marketValue: 1600 },
+    { brand: 'Vivo', model: 'Vivo Y58 5G',           marketValue: 1700 },
+    { brand: 'Vivo', model: 'Vivo V40 Lite',         marketValue: 3000 },
+    { brand: 'Vivo', model: 'Vivo V40 SE',           marketValue: 2800 },
+    { brand: 'Vivo', model: 'Vivo V50',              marketValue: 3800 },
+    { brand: 'Vivo', model: 'Vivo V50 Pro',          marketValue: 4500 },
+    { brand: 'Vivo', model: 'Vivo X100 Ultra',       marketValue: 7500 },
+    { brand: 'Vivo', model: 'Vivo X200 Pro Mini',    marketValue: 6200 },
+    { brand: 'Vivo', model: 'Vivo X200 Ultra',       marketValue: 8000 },
     // ─────────────────────────────────────────
     // OPPO
     // ─────────────────────────────────────────
@@ -940,7 +1114,18 @@ async function main() {
     { brand: 'Oppo', model: 'Oppo Find X6 Pro',      marketValue: 6000 },
     { brand: 'Oppo', model: 'Oppo Find X7 Ultra',    marketValue: 7000 },
     { brand: 'Oppo', model: 'Oppo Find N3 Flip',     marketValue: 6000 },
-
+    { brand: 'Oppo', model: 'Oppo A3',               marketValue: 1000 },
+    { brand: 'Oppo', model: 'Oppo A3 Pro',           marketValue: 1300 },
+    { brand: 'Oppo', model: 'Oppo A3x',              marketValue: 900 },
+    { brand: 'Oppo', model: 'Oppo A60',              marketValue: 1500 },
+    { brand: 'Oppo', model: 'Oppo A80',              marketValue: 1800 },
+    { brand: 'Oppo', model: 'Oppo Reno 13',          marketValue: 3800 },
+    { brand: 'Oppo', model: 'Oppo Reno 13 Pro',      marketValue: 4800 },
+    { brand: 'Oppo', model: 'Oppo Find X8',          marketValue: 5500 },
+    { brand: 'Oppo', model: 'Oppo Find X8 Pro',      marketValue: 7000 },
+    { brand: 'Oppo', model: 'Oppo Find X8 Ultra',    marketValue: 8500 },
+    { brand: 'Oppo', model: 'Oppo Find N5',          marketValue: 9000 },
+    { brand: 'Oppo', model: 'Oppo Find N3',          marketValue: 8000 },
     // ─────────────────────────────────────────
     // SONY XPERIA
     // ─────────────────────────────────────────
@@ -955,7 +1140,10 @@ async function main() {
     { brand: 'Sony', model: 'Xperia 5 III',          marketValue: 3200 },
     { brand: 'Sony', model: 'Xperia 5 IV',           marketValue: 3800 },
     { brand: 'Sony', model: 'Xperia 5 V',            marketValue: 4000 },
-
+    { brand: 'Sony', model: 'Xperia 10 VII',         marketValue: 2800 },
+    { brand: 'Sony', model: 'Xperia 1 VII',          marketValue: 7000 },
+    { brand: 'Sony', model: 'Xperia 5 VI',           marketValue: 4500 },
+    { brand: 'Sony', model: 'Xperia Pro-I',          marketValue: 8000 },
     // ─────────────────────────────────────────
     // INFINIX
     // ─────────────────────────────────────────
@@ -996,7 +1184,16 @@ async function main() {
     { brand: 'Infinix', model: 'Zero 40',            marketValue: 2400 },
     { brand: 'Infinix', model: 'GT 10 Pro',          marketValue: 1800 },
     { brand: 'Infinix', model: 'GT 20 Pro',          marketValue: 2100 },
-
+    { brand: 'Infinix', model: 'Hot 50',             marketValue: 1050 },
+    { brand: 'Infinix', model: 'Hot 50 Pro',         marketValue: 1150 },
+    { brand: 'Infinix', model: 'Hot 50i',            marketValue: 980 },
+    { brand: 'Infinix', model: 'Smart 9',            marketValue: 750 },
+    { brand: 'Infinix', model: 'Smart 9 Plus',       marketValue: 820 },
+    { brand: 'Infinix', model: 'Note 40 Pro+',       marketValue: 2100 },
+    { brand: 'Infinix', model: 'Note 50',            marketValue: 1800 },
+    { brand: 'Infinix', model: 'Note 50 Pro',        marketValue: 2100 },
+    { brand: 'Infinix', model: 'Zero 40 5G',         marketValue: 2600 },
+    { brand: 'Infinix', model: 'GT 30 Pro',          marketValue: 2400 },
     // ─────────────────────────────────────────
     // TECNO
     // ─────────────────────────────────────────
@@ -1030,7 +1227,16 @@ async function main() {
     { brand: 'Tecno', model: 'Camon 30 Pro',         marketValue: 2000 },
     { brand: 'Tecno', model: 'Phantom X2',           marketValue: 2800 },
     { brand: 'Tecno', model: 'Phantom X2 Pro',       marketValue: 3400 },
-
+    { brand: 'Tecno', model: 'Pop 9',                marketValue: 720 },
+    { brand: 'Tecno', model: 'Spark 30',             marketValue: 1050 },
+    { brand: 'Tecno', model: 'Spark 30 Pro',         marketValue: 1200 },
+    { brand: 'Tecno', model: 'Spark 30C',            marketValue: 980 },
+    { brand: 'Tecno', model: 'Camon 30 Premier',     marketValue: 2300 },
+    { brand: 'Tecno', model: 'Camon 40',             marketValue: 1800 },
+    { brand: 'Tecno', model: 'Camon 40 Pro',         marketValue: 2200 },
+    { brand: 'Tecno', model: 'Phantom V Fold',       marketValue: 5500 },
+    { brand: 'Tecno', model: 'Phantom V Flip',       marketValue: 4000 },
+    { brand: 'Tecno', model: 'Phantom X2 5G',        marketValue: 3000 },
     // ─────────────────────────────────────────
     // BLACKVIEW
     // ─────────────────────────────────────────
@@ -1045,14 +1251,23 @@ async function main() {
     { brand: 'Blackview', model: 'BV9300',           marketValue: 1700 },
     { brand: 'Blackview', model: 'Tab 7',            marketValue: 700 },
     { brand: 'Blackview', model: 'Shark 8',          marketValue: 1400 },
-
+    { brand: 'Blackview', model: 'A60 Pro',          marketValue: 600 },
+    { brand: 'Blackview', model: 'A85',              marketValue: 780 },
+    { brand: 'Blackview', model: 'BV5300 Pro',       marketValue: 900 },
+    { brand: 'Blackview', model: 'BV6200 Pro',       marketValue: 1050 },
+    { brand: 'Blackview', model: 'BV9300 Pro',       marketValue: 1900 },
+    { brand: 'Blackview', model: 'BV9400',           marketValue: 2100 },
+    { brand: 'Blackview', model: 'Shark 9',          marketValue: 1600 },
     // ─────────────────────────────────────────
     // CAT (CATERPILLAR)
     // ─────────────────────────────────────────
     { brand: 'CAT', model: 'S62 Pro',                marketValue: 2500 },
     { brand: 'CAT', model: 'S75',                    marketValue: 3000 },
     { brand: 'CAT', model: 'S53',                    marketValue: 2000 },
-
+    { brand: 'CAT', model: 'S42 H+',                marketValue: 1500 },
+    { brand: 'CAT', model: 'S52',                   marketValue: 1800 },
+    { brand: 'CAT', model: 'S72',                   marketValue: 2200 },
+    { brand: 'CAT', model: 'S75 5G',                marketValue: 3200 },
     // ─────────────────────────────────────────
     // ULEFONE
     // ─────────────────────────────────────────
@@ -1064,7 +1279,14 @@ async function main() {
     { brand: 'Ulefone', model: 'Armor 23 Ultra',     marketValue: 2800 },
     { brand: 'Ulefone', model: 'Note 14',            marketValue: 700 },
     { brand: 'Ulefone', model: 'Power Armor 16 Pro', marketValue: 1600 },
-
+    { brand: 'Ulefone', model: 'Armor 11',           marketValue: 1350 },
+    { brand: 'Ulefone', model: 'Armor 13',           marketValue: 1550 },
+    { brand: 'Ulefone', model: 'Armor 16 Pro',       marketValue: 1650 },
+    { brand: 'Ulefone', model: 'Armor 19',           marketValue: 2100 },
+    { brand: 'Ulefone', model: 'Armor 25T Pro',      marketValue: 3000 },
+    { brand: 'Ulefone', model: 'Note 16 Pro',        marketValue: 800 },
+    { brand: 'Ulefone', model: 'Power Armor 18',     marketValue: 1800 },
+    { brand: 'Ulefone', model: 'Power Armor 18T',    marketValue: 2000 },
     // ─────────────────────────────────────────
     // DOOGEE
     // ─────────────────────────────────────────
@@ -1177,6 +1399,9 @@ async function main() {
     { category: 'TELA',     name: 'Reparo de tela com burn-in',             difficulty: 'Alta' },
     { category: 'TELA',     name: 'Troca de tela Dynamic AMOLED',           difficulty: 'Alta' },
     { category: 'TELA',     name: 'Reparo de digitizer separado',           difficulty: 'Muito Alta' },
+    { category: 'TELA',     name: 'Troca de tela com moldura',              difficulty: 'Alta' },
+    { category: 'TELA',     name: 'Reparo de tela piscando',                difficulty: 'Alta' },
+    { category: 'TELA',     name: 'Troca de tela Mini LED',                 difficulty: 'Alta' },
 
     // BATERIA E CARGA
     { category: 'BATERIA',  name: 'Troca de bateria',                       difficulty: 'Baixa' },
@@ -1190,6 +1415,9 @@ async function main() {
     { category: 'BATERIA',  name: 'Troca de bateria de alta capacidade',    difficulty: 'Baixa' },
     { category: 'BATERIA',  name: 'Reparo de porta USB-C',                  difficulty: 'Média' },
     { category: 'BATERIA',  name: 'Troca de porta Lightning',               difficulty: 'Média' },
+    { category: 'BATERIA',  name: 'Reparo de bateria inchada',              difficulty: 'Baixa' },
+    { category: 'BATERIA',  name: 'Troca de cabo flex de carga',            difficulty: 'Média' },
+    { category: 'BATERIA',  name: 'Reparo de carregamento MagSafe',         difficulty: 'Alta' },
 
     // CÂMERA
     { category: 'CAMERA',   name: 'Troca de câmera traseira',               difficulty: 'Média' },
@@ -1204,6 +1432,9 @@ async function main() {
     { category: 'CAMERA',   name: 'Troca de câmera ToF/profundidade',       difficulty: 'Média' },
     { category: 'CAMERA',   name: 'Reparo de câmera com névoa/mancha',      difficulty: 'Média' },
     { category: 'CAMERA',   name: 'Troca de flash principal',               difficulty: 'Baixa' },
+    { category: 'CAMERA',   name: 'Troca de vidro da câmera traseira',      difficulty: 'Baixa' },
+    { category: 'CAMERA',   name: 'Reparo de câmera traseira sem imagem',   difficulty: 'Alta' },
+    { category: 'CAMERA',   name: 'Troca de módulo de câmera dupla',        difficulty: 'Média' },
 
     // PLACA
     { category: 'PLACA',    name: 'Reparo de placa mãe',                    difficulty: 'Muito Alta' },
@@ -1221,6 +1452,9 @@ async function main() {
     { category: 'PLACA',    name: 'Reparo de chip GPS',                     difficulty: 'Muito Alta' },
     { category: 'PLACA',    name: 'Reparo de pads de solda danificados',    difficulty: 'Muito Alta' },
     { category: 'PLACA',    name: 'Troca de PMIC (gerenciamento energia)',   difficulty: 'Muito Alta' },
+    { category: 'PLACA',    name: 'Reparo de placa após queda',             difficulty: 'Muito Alta' },
+    { category: 'PLACA',    name: 'Reparo de trilha rompida',               difficulty: 'Muito Alta' },
+    { category: 'PLACA',    name: 'Diagnóstico de placa com microscópio',   difficulty: 'Muito Alta' },
 
     // CARCAÇA
     { category: 'CARCACA',  name: 'Troca de carcaça/tampa traseira',        difficulty: 'Baixa' },
@@ -1245,6 +1479,10 @@ async function main() {
     { category: 'CARCACA',  name: 'Troca de sensor de proximidade',         difficulty: 'Média' },
     { category: 'CARCACA',  name: 'Troca de sensor de luz ambiente',        difficulty: 'Média' },
     { category: 'CARCACA',  name: 'Troca de alto-falante estéreo',          difficulty: 'Média' },
+    { category: 'CARCACA',  name: 'Troca de botão Power',                   difficulty: 'Baixa' },
+    { category: 'CARCACA',  name: 'Troca de botão volume',                  difficulty: 'Baixa' },
+    { category: 'CARCACA',  name: 'Reparo de conector de acessórios',       difficulty: 'Média' },
+    { category: 'CARCACA',  name: 'Troca de película traseira de vidro',    difficulty: 'Baixa' },
 
     // SOFTWARE
     { category: 'SOFTWARE', name: 'Formatação e restauração',               difficulty: 'Baixa' },
@@ -1258,11 +1496,17 @@ async function main() {
     { category: 'SOFTWARE', name: 'Desbloqueio de operadora (unlock)',      difficulty: 'Média' },
     { category: 'SOFTWARE', name: 'Instalação de ROM customizada',          difficulty: 'Alta' },
     { category: 'SOFTWARE', name: 'Recuperação de boot loop',               difficulty: 'Alta' },
-    { category: 'SOFTWARE', name: 'Reparo de IMEI corrompido',             difficulty: 'Muito Alta' },
+    { category: 'SOFTWARE', name: 'Reparo de IMEI corrompido',              difficulty: 'Muito Alta' },
     { category: 'SOFTWARE', name: 'Desbloqueio de bootloader',              difficulty: 'Média' },
     { category: 'SOFTWARE', name: 'Restauração via modo recovery',          difficulty: 'Baixa' },
     { category: 'SOFTWARE', name: 'Configuração de eSIM',                   difficulty: 'Baixa' },
-    { category: 'SOFTWARE', name: 'Migração de dados entre plataformas',    difficulty: 'Baixa' },
+    { category: 'SOFTWARE', name: 'Migração de dados entre plataformas',   difficulty: 'Baixa' },
+    { category: 'SOFTWARE', name: 'Remoção de conta Samsung (Knox)',        difficulty: 'Alta' },
+    { category: 'SOFTWARE', name: 'Reparo de sistema travado/lento',        difficulty: 'Baixa' },
+    { category: 'SOFTWARE', name: 'Configuração inicial do aparelho',       difficulty: 'Baixa' },
+    { category: 'SOFTWARE', name: 'Reparo de Wi-Fi não conecta',            difficulty: 'Média' },
+    { category: 'SOFTWARE', name: 'Reparo de Bluetooth não conecta',        difficulty: 'Média' },
+    { category: 'SOFTWARE', name: 'Reparo de GPS não funciona',             difficulty: 'Média' },
 
     // GERAIS
     { category: 'GERAIS',   name: 'Limpeza interna completa',               difficulty: 'Baixa' },
@@ -1279,8 +1523,11 @@ async function main() {
     { category: 'GERAIS',   name: 'Reparo de superaquecimento',             difficulty: 'Alta' },
     { category: 'GERAIS',   name: 'Troca de pasta térmica interna',         difficulty: 'Alta' },
     { category: 'GERAIS',   name: 'Avaliação para seguro/laudo técnico',    difficulty: 'Baixa' },
+    { category: 'GERAIS',   name: 'Reparo de alto-falante sem som',         difficulty: 'Média' },
+    { category: 'GERAIS',   name: 'Reparo de microfone sem áudio',          difficulty: 'Média' },
+    { category: 'GERAIS',   name: 'Reparo de chamadas sem som',             difficulty: 'Média' },
+    { category: 'GERAIS',   name: 'Configuração de acessório externo',      difficulty: 'Baixa' },
   ]
-
   console.log('🚀 Iniciando seed do catálogo RepairFlow...')
 
   await prisma.deviceModel.createMany({ data: devices, skipDuplicates: true })
