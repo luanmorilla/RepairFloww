@@ -21,6 +21,7 @@ import { fetchDashboardData } from "@/actions/dashboard-actions";
 import { getShopSettings, updateShopSettings } from "@/actions/shop-actions";
 import { useRouter } from "next/navigation";
 import { detectarMarca } from "@/lib/detectarMarca";
+import { ExpiryBanner } from "@/components/expiry-banner";
 
 type Tab = "dashboard" | "os" | "estoque" | "imei" | "configuracoes";
 
@@ -51,6 +52,7 @@ const GLOBAL_STYLES = `
     --red:            #e05252;
     --red-dim:        rgba(224,82,82,0.1);
     --red-border:     rgba(224,82,82,0.2);
+    --red-dim-2:      rgba(224,82,82,0.06);
 
     --sidebar-w:      220px;
     --radius:         10px;
@@ -154,6 +156,125 @@ const GLOBAL_STYLES = `
     background: var(--rf-surface-2);
     color: var(--rf-text);
     border-color: var(--rf-border-2);
+  }
+
+  /* ── Config buttons ── */
+
+  .rf-btn-save {
+    position: relative;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 20px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #fff;
+    background: linear-gradient(135deg, #1a9e78 0%, #22c997 50%, #1a9e78 100%);
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3), 0 0 0 0.5px rgba(26,158,120,0.4), 0 4px 24px rgba(26,158,120,0.2);
+    transition: background-position 0.4s ease, box-shadow 0.2s ease, transform 0.12s ease;
+    overflow: hidden;
+  }
+  .rf-btn-save::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .rf-btn-save:hover {
+    background-position: 100% 50%;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3), 0 0 0 0.5px rgba(34,201,151,0.5), 0 8px 32px rgba(26,158,120,0.35);
+    transform: translateY(-1px);
+  }
+  .rf-btn-save:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(0,0,0,0.3), 0 0 0 0.5px rgba(26,158,120,0.4), 0 2px 8px rgba(26,158,120,0.15); }
+  .rf-btn-save:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+
+  .rf-btn-danger {
+    position: relative;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 20px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #f87171;
+    background: var(--red-dim-2);
+    border: 0.5px solid var(--red-border);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+    transition: all 0.18s ease;
+    overflow: hidden;
+  }
+  .rf-btn-danger::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(224,82,82,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .rf-btn-danger:hover {
+    background: rgba(224,82,82,0.13);
+    border-color: rgba(224,82,82,0.38);
+    color: #fca5a5;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 6px 24px rgba(224,82,82,0.18), inset 0 1px 0 rgba(255,255,255,0.04);
+    transform: translateY(-1px);
+  }
+  .rf-btn-danger:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+
+  /* warranty chip buttons */
+  .rf-warranty-chip {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.01em;
+  }
+  .rf-warranty-chip.inactive {
+    border: 0.5px solid var(--rf-border);
+    background: var(--rf-surface-2);
+    color: var(--rf-text-3);
+  }
+  .rf-warranty-chip.inactive:hover {
+    border-color: var(--rf-border-2);
+    color: var(--rf-text-2);
+    background: var(--rf-surface-3);
+  }
+  .rf-warranty-chip.active {
+    border: 0.5px solid var(--teal-border);
+    background: var(--teal-dim);
+    color: var(--teal-light);
+    box-shadow: 0 0 0 1px rgba(26,158,120,0.08), 0 2px 8px rgba(26,158,120,0.12);
+  }
+
+  /* mobile overrides */
+  @media (max-width: 768px) {
+    .rf-btn-save,
+    .rf-btn-danger {
+      padding: 15px 20px;
+      font-size: 15px;
+      border-radius: 12px;
+    }
+    .rf-warranty-chip {
+      padding: 10px 16px;
+      font-size: 13.5px;
+    }
   }
 
   .rf-nav-item {
@@ -290,10 +411,81 @@ const GLOBAL_STYLES = `
   }
 
   .rf-bottom-nav {
-    background: rgba(6,6,8,0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 0.5px solid var(--rf-border);
+    background: rgba(9,9,12,0.96);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 0.5px solid rgba(255,255,255,0.07);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .rf-bottom-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px 11px;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.18s ease;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 60px;
+  }
+
+  .rf-bottom-nav-btn .nav-icon {
+    transition: transform 0.18s ease, color 0.18s ease;
+  }
+  .rf-bottom-nav-btn.active .nav-icon {
+    transform: translateY(-1px);
+  }
+
+  .rf-bottom-nav-btn .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.18s ease, opacity 0.18s ease;
+    font-family: var(--font);
+  }
+
+  .rf-bottom-nav-btn.inactive {
+    color: rgba(240,240,244,0.28);
+  }
+  .rf-bottom-nav-btn.inactive:active {
+    color: rgba(240,240,244,0.5);
+  }
+
+  .rf-bottom-nav-btn.active {
+    color: var(--teal-light);
+  }
+
+  .rf-nav-indicator {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 2.5px;
+    background: var(--teal-light);
+    border-radius: 0 0 3px 3px;
+    box-shadow: 0 0 10px rgba(34,201,151,0.6), 0 0 20px rgba(34,201,151,0.2);
+  }
+
+  .rf-nav-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 30px;
+    border-radius: 10px;
+    transition: background 0.18s ease;
+  }
+  .rf-bottom-nav-btn.active .rf-nav-icon-wrap {
+    background: rgba(26,158,120,0.12);
   }
 
   @keyframes rf-fade-up {
@@ -301,6 +493,8 @@ const GLOBAL_STYLES = `
     to   { opacity: 1; transform: translateY(0); }
   }
   .rf-anim { animation: rf-fade-up 0.2s ease forwards; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
 function LogoIcon() {
@@ -369,7 +563,6 @@ function ConfiguracoesTab() {
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 240 }}>
       <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid rgba(26,158,120,0.15)", borderTopColor: "var(--teal)", animation: "spin 0.8s linear infinite" }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
@@ -377,6 +570,7 @@ function ConfiguracoesTab() {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+
       {/* Card principal — Dados da Assistência */}
       <div className="rf-card" style={{ padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
@@ -466,7 +660,7 @@ function ConfiguracoesTab() {
             <label style={{
               fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500,
               textTransform: "uppercase", letterSpacing: "0.07em",
-              display: "flex", alignItems: "center", gap: 5, marginBottom: 6,
+              display: "flex", alignItems: "center", gap: 5, marginBottom: 8,
             }}>
               <ShieldCheck size={11} /> Garantia Padrão
             </label>
@@ -479,22 +673,12 @@ function ConfiguracoesTab() {
                 />
                 <span style={{ fontSize: 12, color: "var(--rf-text-3)" }}>dias</span>
               </div>
-              <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+              <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap" }}>
                 {warrantyOptions.map((d) => (
                   <button
                     key={d}
                     onClick={() => setWarranty(d)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      border: warranty === d ? "0.5px solid var(--teal-border)" : "0.5px solid var(--rf-border)",
-                      background: warranty === d ? "var(--teal-dim)" : "var(--rf-surface-2)",
-                      color: warranty === d ? "var(--teal-light)" : "var(--rf-text-3)",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                    }}
+                    className={`rf-warranty-chip ${warranty === d ? "active" : "inactive"}`}
                   >
                     {d}d
                   </button>
@@ -531,41 +715,41 @@ function ConfiguracoesTab() {
           </motion.div>
         )}
 
+        {/* ── Salvar ── */}
         <div style={{ marginTop: 20 }}>
-          <button onClick={handleSave} disabled={saving} className="rf-btn-primary" style={{ width: "100%" }}>
-            {saving ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <Save size={14} />}
+          <button onClick={handleSave} disabled={saving} className="rf-btn-save">
+            {saving
+              ? <Loader2 size={16} style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+              : <Save size={16} style={{ flexShrink: 0 }} />}
             {saving ? "Salvando..." : "Salvar Configurações"}
           </button>
         </div>
       </div>
 
-      {/* ── Assinatura — portal Stripe ── */}
+      {/* ── Assinatura ── */}
       <AssinaturaCard />
 
-      {/* Conta */}
+      {/* ── Conta / Sair ── */}
       <div className="rf-card" style={{ padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div className="rf-icon-box" style={{ background: "var(--red-dim)" }}>
             <LogOut size={15} style={{ color: "var(--red)" }} />
           </div>
-          <p style={{ fontSize: 13.5, fontWeight: 500 }}>Conta</p>
+          <div>
+            <p style={{ fontSize: 13.5, fontWeight: 500 }}>Conta</p>
+            <p style={{ fontSize: 11.5, color: "var(--rf-text-3)", marginTop: 1 }}>Encerrar sessão do painel</p>
+          </div>
         </div>
+
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          style={{
-            width: "100%", padding: "9px 16px",
-            borderRadius: "var(--radius)",
-            background: "var(--red-dim)",
-            border: "0.5px solid var(--red-border)",
-            color: "var(--red)",
-            fontSize: 13, fontWeight: 500,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            cursor: "pointer", transition: "all 0.15s",
-          }}
+          className="rf-btn-danger"
         >
-          <LogOut size={14} /> Sair da conta
+          <LogOut size={16} style={{ flexShrink: 0 }} />
+          Sair da conta
         </button>
       </div>
+
     </div>
   );
 }
@@ -877,6 +1061,8 @@ export default function DashboardPage() {
       </header>
 
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--rf-bg)", paddingTop: "60px" }}>
+        {/* Banner de expiração — aparece abaixo do header fixo */}
+        <ExpiryBanner />
         <div style={{ display: "flex", flex: 1 }}>
 
           {/* Sidebar desktop */}
@@ -1083,10 +1269,7 @@ export default function DashboardPage() {
         {/* Bottom nav mobile */}
         <nav
           className="md:hidden rf-bottom-nav"
-          style={{
-            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30,
-            display: "flex",
-          }}
+          style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30, display: "flex" }}
         >
           {tabs.map((item) => {
             const isActive = activeTab === item.id;
@@ -1094,31 +1277,19 @@ export default function DashboardPage() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                style={{
-                  flex: 1, display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center",
-                  padding: "10px 4px", gap: 3,
-                  color: isActive ? "var(--teal-light)" : "var(--rf-text-3)",
-                  background: "none", border: "none", cursor: "pointer",
-                  transition: "color 0.15s",
-                  position: "relative",
-                }}
+                className={`rf-bottom-nav-btn ${isActive ? "active" : "inactive"}`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="tab-indicator"
-                    style={{
-                      position: "absolute", top: 0, left: "50%",
-                      transform: "translateX(-50%)",
-                      width: 24, height: 2,
-                      background: "var(--teal)",
-                      borderRadius: "0 0 2px 2px",
-                      boxShadow: "0 0 8px var(--teal)",
-                    }}
+                    className="rf-nav-indicator"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
                   />
                 )}
-                <item.icon size={18} />
-                <span style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                <div className="rf-nav-icon-wrap nav-icon">
+                  <item.icon size={20} strokeWidth={isActive ? 2 : 1.75} />
+                </div>
+                <span className="nav-label">
                   {mobileLabel[item.id]}
                 </span>
               </button>
