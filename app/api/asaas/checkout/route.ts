@@ -46,7 +46,7 @@ body: JSON.stringify({
   name: user.shop.name,
   email: user.email,
   externalReference: user.shop.id,
-  cpfCnpj: "00000000000", // temporário para teste
+  cpfCnpj: "00000000191", // temporário para teste
 }),
       });
       const customer = await res.json();
