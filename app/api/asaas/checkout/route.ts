@@ -32,6 +32,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Loja não encontrada" }, { status: 404 });
     }
 
+    // Verifica se o usuário tem CPF cadastrado
+    if (!user.cpfCnpj) {
+      return NextResponse.json(
+        { error: "CPF não encontrado. Por favor, atualize seu cadastro." },
+        { status: 400 }
+      );
+    }
+
     // 1. Cria ou reutiliza cliente no Asaas
     let asaasCustomerId = user.shop.asaasCustomerId;
     if (!asaasCustomerId) {
@@ -41,15 +49,20 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
           "access_token": ASAAS_KEY,
         },
-        // DEPOIS
-body: JSON.stringify({
-  name: user.shop.name,
-  email: user.email,
-  externalReference: user.shop.id,
-  cpfCnpj: "46663044877", // temporário para teste
-}),
+        body: JSON.stringify({
+          name: user.name,
+          email: user.email,
+          externalReference: user.shop.id,
+          cpfCnpj: user.cpfCnpj, // CPF vem do banco, salvo no cadastro
+        }),
       });
       const customer = await res.json();
+
+      if (!customer.id) {
+        console.error("Erro Asaas (cliente):", customer);
+        return NextResponse.json({ error: "Erro ao criar cliente no Asaas" }, { status: 500 });
+      }
+
       asaasCustomerId = customer.id;
 
       await prisma.shop.update({
@@ -59,7 +72,7 @@ body: JSON.stringify({
     }
 
     // 2. Cria assinatura no Asaas
-    const hoje = new Date().toISOString().split("T")[0]; // "2025-01-01"
+    const hoje = new Date().toISOString().split("T")[0];
     const res = await fetch(`${ASAAS_API}/subscriptions`, {
       method: "POST",
       headers: {
@@ -68,7 +81,7 @@ body: JSON.stringify({
       },
       body: JSON.stringify({
         customer: asaasCustomerId,
-        billingType: "UNDEFINED",    // cliente escolhe: Pix, boleto ou cartão
+        billingType: "UNDEFINED", // cliente escolhe: Pix, boleto ou cartão
         value: plano.valor,
         nextDueDate: hoje,
         cycle: plano.ciclo,

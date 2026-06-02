@@ -16,6 +16,7 @@ const formSchema = z.object({
   name: z.string().min(3, "O nome precisa ter pelo menos 3 letras"),
   shopName: z.string().min(3, "Digite o nome da assistência"),
   email: z.string().email("Digite um e-mail válido"),
+  cpfCnpj: z.string().min(11, "CPF inválido").max(14, "CPF inválido"),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
 });
 
@@ -64,9 +65,20 @@ export default function RegisterPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  // Formata o CPF enquanto o usuário digita: 000.000.000-00
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 11) value = value.slice(0, 11);
+    value = value
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    setValue("cpfCnpj", value);
+  };
 
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
@@ -171,6 +183,19 @@ export default function RegisterPage() {
                   className={`bg-zinc-900 border h-12 rounded-xl text-white focus-visible:border-blue-500 transition-colors ${errors.email ? "border-red-500" : "border-zinc-800"}`}
                 />
                 {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
+              </div>
+
+              {/* CAMPO CPF — NOVO */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">CPF</Label>
+                <Input
+                  {...register("cpfCnpj")}
+                  onChange={handleCpfChange}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  className={`bg-zinc-900 border h-12 rounded-xl text-white focus-visible:border-blue-500 transition-colors ${errors.cpfCnpj ? "border-red-500" : "border-zinc-800"}`}
+                />
+                {errors.cpfCnpj && <p className="text-xs text-red-400">{errors.cpfCnpj.message}</p>}
               </div>
 
               <div className="space-y-1.5">

@@ -41,6 +41,7 @@ model User {
   name      String
   email     String   @unique
   password  String
+  cpfCnpj   String?  // CPF do dono da assistência
   role      Role     @default(TECHNICIAN)
   shopId    String
   shop      Shop     @relation(fields: [shopId], references: [id])
