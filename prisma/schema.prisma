@@ -22,12 +22,12 @@ model Shop {
   updatedAt        DateTime @updatedAt
 
   // Campos de Pagamento e Assinatura
-  planStatus           String   @default("inactive")
-  subscriptionStatus   String?  @default("inactive") // Campo novo adicionado
-  planType             String?
-  planExpiresAt        DateTime?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
+  planStatus          String    @default("inactive")
+  subscriptionStatus  String?   @default("inactive")
+  planType            String?
+  planExpiresAt       DateTime?
+  asaasCustomerId     String?
+  asaasSubscriptionId String?
 
   users         User[]
   customers     Customer[]
