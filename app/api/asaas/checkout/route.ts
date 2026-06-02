@@ -41,11 +41,13 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
           "access_token": ASAAS_KEY,
         },
-        body: JSON.stringify({
-          name: user.shop.name,
-          email: user.email,
-          externalReference: user.shop.id,
-        }),
+        // DEPOIS
+body: JSON.stringify({
+  name: user.shop.name,
+  email: user.email,
+  externalReference: user.shop.id,
+  cpfCnpj: "00000000000", // temporário para teste
+}),
       });
       const customer = await res.json();
       asaasCustomerId = customer.id;
