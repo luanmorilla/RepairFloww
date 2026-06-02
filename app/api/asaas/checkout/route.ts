@@ -40,6 +40,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Garante que o CPF vai só com números, sem pontos ou traço
+    const cpfLimpo = user.cpfCnpj.replace(/\D/g, "");
+
     // 1. Cria ou reutiliza cliente no Asaas
     let asaasCustomerId = user.shop.asaasCustomerId;
     if (!asaasCustomerId) {
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
           name: user.name,
           email: user.email,
           externalReference: user.shop.id,
-          cpfCnpj: user.cpfCnpj, // CPF vem do banco, salvo no cadastro
+          cpfCnpj: cpfLimpo, // só números, sem formatação
         }),
       });
       const customer = await res.json();
@@ -81,7 +84,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         customer: asaasCustomerId,
-        billingType: "UNDEFINED", // cliente escolhe: Pix, boleto ou cartão
+        billingType: "UNDEFINED",
         value: plano.valor,
         nextDueDate: hoje,
         cycle: plano.ciclo,
