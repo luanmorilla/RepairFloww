@@ -8,6 +8,7 @@ import { getDeviceModels, getRepairTypes } from "@/actions/get-devices";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MarketPriceFilter } from "@/components/dashboard/market-filter";
 
 interface Device {
   id: string;
@@ -132,8 +133,8 @@ export default function NewOSPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] p-8 text-white">
-      <div className="max-w-2xl mx-auto bg-zinc-950 p-8 rounded-2xl border border-zinc-900 shadow-2xl">
+    <div className="min-h-screen bg-[#050505] p-4 md:p-8 text-white">
+      <div className="max-w-2xl mx-auto bg-zinc-950 p-6 md:p-8 rounded-2xl border border-zinc-900 shadow-2xl">
         <h1 className="text-2xl font-bold mb-6 border-b border-zinc-900 pb-4">
           Nova Ordem de Serviço
         </h1>
@@ -287,17 +288,16 @@ export default function NewOSPage() {
                 <span>R$ {(Number(partCost) || 0).toFixed(2)}</span>
               </div>
 
-              {/* ── Subtotal ── */}
+              {/* Subtotal */}
               <div className="flex justify-between text-sm text-zinc-400 border-t border-emerald-500/20 pt-2">
                 <span>Subtotal:</span>
                 <span>R$ {subtotal.toFixed(2)}</span>
               </div>
 
-              {/* ── Campo de desconto ── */}
+              {/* Campo de desconto */}
               <div className="space-y-1.5 pt-1">
                 <label className="text-xs text-zinc-500 font-medium">Desconto (opcional)</label>
                 <div className="flex gap-2">
-                  {/* Botão toggle % / R$ */}
                   <button
                     type="button"
                     onClick={() => {
@@ -326,12 +326,22 @@ export default function NewOSPage() {
                 )}
               </div>
 
-              {/* ── Preço final ── */}
+              {/* Preço final */}
               <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-emerald-500/30 mt-2">
                 <span>Preço Final{discountAmount > 0 ? " (c/ desconto)" : ""}:</span>
                 <span className="text-emerald-400">R$ {finalPrice.toFixed(2)}</span>
               </div>
             </div>
+          )}
+
+          {/* FILTRO DE MERCADO */}
+          {selectedDevice && selectedRepair && Number(partCost) > 0 && (
+            <MarketPriceFilter
+              device={`${selectedDevice.brand} ${selectedDevice.model}`}
+              service={selectedRepair.name}
+              partCost={Number(partCost)}
+              subtotal={subtotal}
+            />
           )}
 
           <Button
