@@ -12,7 +12,16 @@ export async function POST(request: Request) {
     const evento = await request.json();
     const tipo = evento.event;
     const pagamento = evento.payment;
-    const shopId = pagamento?.externalReference;
+
+    // ✅ CORRIGIDO: busca shopId pelo externalReference OU pelo asaasSubscriptionId
+    let shopId = pagamento?.externalReference;
+
+    if (!shopId && pagamento?.subscription) {
+      const shop = await prisma.shop.findFirst({
+        where: { asaasSubscriptionId: pagamento.subscription },
+      });
+      shopId = shop?.id;
+    }
 
     if (!shopId) return NextResponse.json({ received: true });
 

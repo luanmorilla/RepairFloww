@@ -42,7 +42,7 @@ export default function AtivadoPage() {
       }
     }
 
-    // Pequeno delay inicial para garantir que o webhook da Stripe já processou
+    // Pequeno delay inicial para garantir que o webhook do Asaas já processou
     setTimeout(tentarAtualizar, 800);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,7 +60,8 @@ export default function AtivadoPage() {
             </div>
             <div>
               <p className="text-white font-semibold text-lg">Ativando seu plano...</p>
-              <p className="text-white/40 text-sm mt-1">Confirmando pagamento com a Stripe</p>
+              {/* ✅ CORRIGIDO: era "Stripe", agora é "Asaas" */}
+              <p className="text-white/40 text-sm mt-1">Confirmando pagamento com o Asaas</p>
             </div>
             {tentativas > 3 && (
               <p className="text-white/20 text-xs">

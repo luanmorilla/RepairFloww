@@ -43,6 +43,9 @@ export async function POST(request: Request) {
     // Garante que o CPF vai só com números, sem pontos ou traço
     const cpfLimpo = user.cpfCnpj.replace(/\D/g, "");
 
+    // ✅ URL de redirecionamento após pagamento confirmado
+    const redirectUrl = `${process.env.NEXTAUTH_URL}/painel/ativado`;
+
     // 1. Cria ou reutiliza cliente no Asaas
     let asaasCustomerId = user.shop.asaasCustomerId;
     if (!asaasCustomerId) {
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
           name: user.name,
           email: user.email,
           externalReference: user.shop.id,
-          cpfCnpj: cpfLimpo, // só números, sem formatação
+          cpfCnpj: cpfLimpo,
         }),
       });
       const customer = await res.json();
@@ -90,6 +93,8 @@ export async function POST(request: Request) {
         cycle: plano.ciclo,
         description: `RepairFlow - Plano ${tipo}`,
         externalReference: user.shop.id,
+        // ✅ CORRIGIDO: redireciona para /painel/ativado após pagamento
+        redirectUrl,
       }),
     });
 
@@ -100,10 +105,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Erro ao criar assinatura" }, { status: 500 });
     }
 
-    // 3. Salva o ID da assinatura
+    // 3. Salva o ID da assinatura e o tipo do plano no banco
     await prisma.shop.update({
       where: { id: user.shop.id },
-      data: { asaasSubscriptionId: subscription.id },
+      data: {
+        asaasSubscriptionId: subscription.id,
+        planType: tipo, // ✅ salva "mensal" ou "trimestral" para o webhook usar
+      },
     });
 
     // 4. Pega o link de pagamento da primeira cobrança
@@ -113,7 +121,24 @@ export async function POST(request: Request) {
     );
     const cobrancas = await cobrancaRes.json();
     const primeiraCobranca = cobrancas.data?.[0];
+
+    // ✅ CORRIGIDO: força o redirectUrl também na cobrança individual
+    if (primeiraCobranca?.id) {
+      await fetch(`${ASAAS_API}/payments/${primeiraCobranca.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "access_token": ASAAS_KEY,
+        },
+        body: JSON.stringify({ redirectUrl }),
+      });
+    }
+
     const linkPagamento = primeiraCobranca?.invoiceUrl;
+
+    if (!linkPagamento) {
+      return NextResponse.json({ error: "Não foi possível gerar o link de pagamento" }, { status: 500 });
+    }
 
     return NextResponse.json({ url: linkPagamento });
   } catch (error) {
