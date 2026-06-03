@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { createServiceOrderWithPricing } from "@/actions/create-os";
@@ -8,7 +8,6 @@ import { getDeviceModels, getRepairTypes } from "@/actions/get-devices";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MarketPriceFilter } from "@/components/dashboard/market-filter";
 
 interface Device {
   id: string;
@@ -47,6 +46,12 @@ export default function NewOSPage() {
   const [discountType, setDiscountType] = useState<"%" | "R$">("%");
   const [discountValue, setDiscountValue] = useState<string>("");
 
+  // ── Preço ajustado invisível ──────────────────────────────────────────────
+  const [adjustedPrice, setAdjustedPrice] = useState<number | null>(null);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const marketFetchRef = useRef<string>("");
+
+  // ── Carrega aparelhos e serviços ──────────────────────────────────────────
   useEffect(() => {
     async function loadData() {
       try {
@@ -55,12 +60,17 @@ export default function NewOSPage() {
           getRepairTypes(),
         ]);
         setDevices(
-          devicesData.map((d: any) => ({ ...d, marketValue: Number(d.marketValue) }))
+          devicesData.map((d: any) => ({
+            ...d,
+            marketValue: Number(d.marketValue),
+          }))
         );
         setRepairs(repairsData);
       } catch (err) {
         console.error("Erro ao carregar dados:", err);
-        setError("Falha ao carregar aparelhos/serviços. Verifique o banco de dados.");
+        setError(
+          "Falha ao carregar aparelhos/serviços. Verifique o banco de dados."
+        );
       }
     }
     loadData();
@@ -82,14 +92,60 @@ export default function NewOSPage() {
     subtotal = maoDeObra + (Number(partCost) || 0) + riskValue;
   }
 
-  // ── Cálculo do desconto ───────────────────────────────────────────────────
+  // ── Consulta mercado invisível ────────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedDevice || !selectedRepair) {
+      setAdjustedPrice(null);
+      marketFetchRef.current = "";
+      return;
+    }
+
+    const key = `${selectedDevice.id}|${selectedRepair.id}|${partCost}`;
+    if (key === marketFetchRef.current) return;
+    marketFetchRef.current = key;
+
+    // Reseta enquanto busca novo preço
+    setAdjustedPrice(null);
+
+    const timer = setTimeout(async () => {
+      setFetchingPrice(true);
+      try {
+        const res = await fetch("/api/market-price", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            device: `${selectedDevice.brand} ${selectedDevice.model}`,
+            service: selectedRepair.name,
+            partCost: Number(partCost) || 0,
+            subtotal,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.adjustedPrice) {
+          setAdjustedPrice(data.adjustedPrice);
+        }
+      } catch {
+        // silencioso — usa subtotal normal como fallback
+      } finally {
+        setFetchingPrice(false);
+      }
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [selectedDevice, selectedRepair, partCost, subtotal]);
+
+  // ── Preço a exibir (ajustado ou subtotal engine como fallback) ────────────
+  const displayPrice = adjustedPrice ?? subtotal;
+
+  // ── Desconto sobre o preço exibido ────────────────────────────────────────
   const discountRaw = Number(discountValue) || 0;
   const discountAmount =
     discountType === "%"
-      ? Math.min((subtotal * discountRaw) / 100, subtotal)
-      : Math.min(discountRaw, subtotal);
-  const finalPrice = subtotal - discountAmount;
+      ? Math.min((displayPrice * discountRaw) / 100, displayPrice)
+      : Math.min(discountRaw, displayPrice);
+  const displayFinal = displayPrice - discountAmount;
 
+  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -118,7 +174,7 @@ export default function NewOSPage() {
       defectDescription: formData.get("defectDescription"),
       partCost: Number(partCost),
       discountAmount,
-      finalPrice,
+      finalPrice: displayFinal,
     };
 
     try {
@@ -126,7 +182,9 @@ export default function NewOSPage() {
       router.push("/painel");
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || "Erro ao criar Ordem de Serviço. Tente novamente.");
+      setError(
+        err?.message || "Erro ao criar Ordem de Serviço. Tente novamente."
+      );
     } finally {
       setLoading(false);
     }
@@ -146,20 +204,35 @@ export default function NewOSPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* CLIENTE */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs text-zinc-500 font-medium">Nome do Cliente</label>
-              <Input name="name" className="bg-zinc-900 border-zinc-800" required />
+              <label className="text-xs text-zinc-500 font-medium">
+                Nome do Cliente
+              </label>
+              <Input
+                name="name"
+                className="bg-zinc-900 border-zinc-800"
+                required
+              />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-zinc-500 font-medium">WhatsApp</label>
-              <Input name="phone" className="bg-zinc-900 border-zinc-800" required />
+              <label className="text-xs text-zinc-500 font-medium">
+                WhatsApp
+              </label>
+              <Input
+                name="phone"
+                className="bg-zinc-900 border-zinc-800"
+                required
+              />
             </div>
           </div>
 
           {/* APARELHO */}
           <div className="space-y-2 relative">
-            <label className="text-xs text-zinc-500 font-medium">Buscar Aparelho</label>
+            <label className="text-xs text-zinc-500 font-medium">
+              Buscar Aparelho
+            </label>
             <Input
               placeholder="Digite e CLIQUE na sugestão..."
               className="bg-zinc-900 border-zinc-800"
@@ -179,13 +252,19 @@ export default function NewOSPage() {
             {showDeviceSuggestions && searchDevice && !selectedDevice && (
               <ul className="absolute z-20 w-full bg-zinc-800 border border-zinc-700 mt-1 max-h-48 overflow-y-auto rounded shadow-2xl">
                 {devices.length === 0 && (
-                  <li className="p-3 text-sm text-zinc-500">Carregando aparelhos...</li>
+                  <li className="p-3 text-sm text-zinc-500">
+                    Carregando aparelhos...
+                  </li>
                 )}
                 {devices
                   .filter(
                     (d) =>
-                      d.model.toLowerCase().includes(searchDevice.toLowerCase()) ||
-                      d.brand.toLowerCase().includes(searchDevice.toLowerCase())
+                      d.model
+                        .toLowerCase()
+                        .includes(searchDevice.toLowerCase()) ||
+                      d.brand
+                        .toLowerCase()
+                        .includes(searchDevice.toLowerCase())
                   )
                   .map((d) => (
                     <li
@@ -206,7 +285,9 @@ export default function NewOSPage() {
 
           {/* SERVIÇO */}
           <div className="space-y-2 relative">
-            <label className="text-xs text-zinc-500 font-medium">Serviço Solicitado</label>
+            <label className="text-xs text-zinc-500 font-medium">
+              Serviço Solicitado
+            </label>
             <Input
               placeholder="Digite e CLIQUE na sugestão..."
               className="bg-zinc-900 border-zinc-800"
@@ -226,7 +307,9 @@ export default function NewOSPage() {
             {showRepairSuggestions && searchRepair && !selectedRepair && (
               <ul className="absolute z-10 w-full bg-zinc-800 border border-zinc-700 mt-1 max-h-48 overflow-y-auto rounded shadow-2xl">
                 {repairs.length === 0 && (
-                  <li className="p-3 text-sm text-zinc-500">Carregando serviços...</li>
+                  <li className="p-3 text-sm text-zinc-500">
+                    Carregando serviços...
+                  </li>
                 )}
                 {repairs
                   .filter((r) =>
@@ -249,8 +332,11 @@ export default function NewOSPage() {
             )}
           </div>
 
+          {/* CUSTO DA PEÇA */}
           <div className="space-y-1">
-            <label className="text-xs text-zinc-500 font-medium">Custo da Peça (R$)</label>
+            <label className="text-xs text-zinc-500 font-medium">
+              Custo da Peça (R$)
+            </label>
             <Input
               type="number"
               min="0"
@@ -262,8 +348,11 @@ export default function NewOSPage() {
             />
           </div>
 
+          {/* OBSERVAÇÕES */}
           <div className="space-y-1">
-            <label className="text-xs text-zinc-500 font-medium">Observações</label>
+            <label className="text-xs text-zinc-500 font-medium">
+              Observações
+            </label>
             <Textarea
               name="defectDescription"
               className="bg-zinc-900 border-zinc-800 h-20"
@@ -273,7 +362,9 @@ export default function NewOSPage() {
           {/* PAINEL DE PREÇO AO VIVO */}
           {selectedDevice && selectedRepair && (
             <div className="bg-emerald-900/20 border border-emerald-500/30 p-4 rounded-xl space-y-2 mt-6">
-              <h3 className="text-emerald-500 font-bold mb-2">Resumo do Orçamento Sugerido</h3>
+              <h3 className="text-emerald-500 font-bold mb-2">
+                Resumo do Orçamento Sugerido
+              </h3>
 
               <div className="flex justify-between text-sm text-zinc-400">
                 <span>Mão de obra ({selectedRepair.difficulty}):</span>
@@ -288,15 +379,11 @@ export default function NewOSPage() {
                 <span>R$ {(Number(partCost) || 0).toFixed(2)}</span>
               </div>
 
-              {/* Subtotal */}
-              <div className="flex justify-between text-sm text-zinc-400 border-t border-emerald-500/20 pt-2">
-                <span>Subtotal:</span>
-                <span>R$ {subtotal.toFixed(2)}</span>
-              </div>
-
-              {/* Campo de desconto */}
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs text-zinc-500 font-medium">Desconto (opcional)</label>
+              {/* Desconto */}
+              <div className="space-y-1.5 pt-2 border-t border-emerald-500/20">
+                <label className="text-xs text-zinc-500 font-medium">
+                  Desconto (opcional)
+                </label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -328,20 +415,19 @@ export default function NewOSPage() {
 
               {/* Preço final */}
               <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-emerald-500/30 mt-2">
-                <span>Preço Final{discountAmount > 0 ? " (c/ desconto)" : ""}:</span>
-                <span className="text-emerald-400">R$ {finalPrice.toFixed(2)}</span>
+                <span>
+                  Preço Final{discountAmount > 0 ? " (c/ desconto)" : ""}:
+                </span>
+                <span className="text-emerald-400 flex items-center gap-2">
+                  {fetchingPrice && (
+                    <span className="text-xs text-zinc-500 font-normal animate-pulse">
+                      calculando...
+                    </span>
+                  )}
+                  R$ {displayFinal.toFixed(2)}
+                </span>
               </div>
             </div>
-          )}
-
-          {/* FILTRO DE MERCADO */}
-          {selectedDevice && selectedRepair && Number(partCost) > 0 && (
-            <MarketPriceFilter
-              device={`${selectedDevice.brand} ${selectedDevice.model}`}
-              service={selectedRepair.name}
-              partCost={Number(partCost)}
-              subtotal={subtotal}
-            />
           )}
 
           <Button
