@@ -193,9 +193,17 @@ export default function NewOSPage() {
   return (
     <div className="min-h-screen bg-[#050505] p-4 md:p-8 text-white">
       <div className="max-w-2xl mx-auto bg-zinc-950 p-6 md:p-8 rounded-2xl border border-zinc-900 shadow-2xl">
-        <h1 className="text-2xl font-bold mb-6 border-b border-zinc-900 pb-4">
-          Nova Ordem de Serviço
-        </h1>
+      <div className="flex items-center justify-between mb-6 border-b border-zinc-900 pb-4">
+  <h1 className="text-2xl font-bold">Nova Ordem de Serviço</h1>
+  <button
+    type="button"
+    onClick={() => router.push("/painel")}
+    className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition"
+    title="Cancelar e voltar"
+  >
+    ✕
+  </button>
+</div>
 
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
