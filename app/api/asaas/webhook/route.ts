@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    // Valida token de segurança
     const token = request.headers.get("asaas-access-token");
     if (token !== process.env.ASAAS_WEBHOOK_TOKEN) {
       return NextResponse.json({ error: "Token inválido" }, { status: 401 });
@@ -13,7 +12,6 @@ export async function POST(request: Request) {
     const tipo = evento.event;
     const pagamento = evento.payment;
 
-    // ✅ CORRIGIDO: busca shopId pelo externalReference OU pelo asaasSubscriptionId
     let shopId = pagamento?.externalReference;
 
     if (!shopId && pagamento?.subscription) {
@@ -26,7 +24,6 @@ export async function POST(request: Request) {
     if (!shopId) return NextResponse.json({ received: true });
 
     switch (tipo) {
-      // ✅ Pagamento confirmado
       case "PAYMENT_CONFIRMED":
       case "PAYMENT_RECEIVED": {
         const diasPlano = await getDiasPlano(shopId);
@@ -43,8 +40,28 @@ export async function POST(request: Request) {
         break;
       }
 
-      // ❌ Pagamento atrasado ou cancelado
-      case "PAYMENT_OVERDUE":
+      case "PAYMENT_OVERDUE": {
+        // PAYMENT_OVERDUE chega antes e depois do pagamento PIX
+        // Só expira se o plano realmente não estiver ativo e dentro da validade
+        const shop = await prisma.shop.findUnique({
+          where: { id: shopId },
+          select: { planStatus: true, planExpiresAt: true },
+        });
+
+        const aindaValido =
+          shop?.planStatus === "active" &&
+          shop?.planExpiresAt != null &&
+          shop.planExpiresAt > new Date();
+
+        if (!aindaValido) {
+          await prisma.shop.update({
+            where: { id: shopId },
+            data: { planStatus: "expired" },
+          });
+        }
+        break;
+      }
+
       case "PAYMENT_DELETED":
       case "SUBSCRIPTION_INACTIVATED": {
         await prisma.shop.update({
@@ -62,7 +79,6 @@ export async function POST(request: Request) {
   }
 }
 
-// Descobre quantos dias tem o plano atual da loja
 async function getDiasPlano(shopId: string): Promise<number> {
   const shop = await prisma.shop.findUnique({ where: { id: shopId } });
   return shop?.planType === "trimestral" ? 90 : 30;
