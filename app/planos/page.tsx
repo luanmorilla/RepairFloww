@@ -1,21 +1,65 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Check, Loader2, Zap, Shield, Lock, Star, TrendingUp, Clock, ChevronRight, Wrench, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Check, Loader2, Zap, Shield, Lock, Star, TrendingUp, Clock, ChevronRight, Wrench, X, Copy, CheckCheck, CreditCard, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+
+// ─── Tipos ───────────────────────────────────────────────────────────────────
+
+type Metodo = "pix" | "cartao";
+type EtapaModal = "metodo" | "cpf" | "pix-aguardando" | "confirmado";
+
+interface PixData {
+  paymentId: string;
+  qrCode: string;
+  copiaCola: string;
+  valor: number;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+const features = [
+  { icon: "📋", text: "Ordens de serviço ilimitadas" },
+  { icon: "📦", text: "Controle de estoque completo" },
+  { icon: "💰", text: "Precificação inteligente" },
+  { icon: "⚡", text: "Módulo de Venda Rápida" },
+  { icon: "📱", text: "Consulta de IMEI integrada" },
+  { icon: "🎧", text: "Suporte prioritário" },
+];
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function PlanosPage() {
-  const [loading, setLoading] = useState<string | null>(null);
+  const router = useRouter();
+  const { update } = useSession();
+
   const [contador, setContador] = useState({ h: 2, m: 47, s: 33 });
   const [pulse, setPulse] = useState(false);
 
-  // Modal CPF
-  const [showCpfModal, setShowCpfModal] = useState(false);
+  // Modal
+  const [showModal, setShowModal] = useState(false);
+  const [etapa, setEtapa] = useState<EtapaModal>("metodo");
+  const [metodoSelecionado, setMetodoSelecionado] = useState<Metodo>("pix");
+  const [tipoPlano, setTipoPlano] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState("");
+
+  // CPF
   const [cpfInput, setCpfInput] = useState("");
   const [cpfError, setCpfError] = useState("");
   const [savingCpf, setSavingCpf] = useState(false);
-  const [pendingTipo, setPendingTipo] = useState<string | null>(null);
 
+  // PIX
+  const [pixData, setPixData] = useState<PixData | null>(null);
+  const [copiado, setCopiado] = useState(false);
+  const [tentativas, setTentativas] = useState(0);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Contador regressivo
   useEffect(() => {
     const t = setInterval(() => {
       setContador(prev => {
@@ -35,8 +79,60 @@ export default function PlanosPage() {
     return () => clearInterval(t);
   }, []);
 
-  // Formata CPF enquanto digita
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Limpa polling ao fechar modal
+  useEffect(() => {
+    if (!showModal && pollingRef.current) {
+      clearTimeout(pollingRef.current);
+    }
+  }, [showModal]);
+
+  // ── Polling: aguarda webhook confirmar pagamento PIX ──────────────────────
+  const iniciarPolling = useCallback(async () => {
+    let count = 0;
+
+    async function tentarAtualizar() {
+      try {
+        const novaSession = await update();
+        const planStatus = (novaSession?.user as any)?.planStatus;
+
+        if (planStatus === "active") {
+          setEtapa("confirmado");
+          setTimeout(() => router.replace("/painel"), 2000);
+          return;
+        }
+
+        count++;
+        setTentativas(count);
+
+        if (count < 24) {
+          // Tenta a cada 2.5s por até ~60s
+          pollingRef.current = setTimeout(tentarAtualizar, 2500);
+        } else {
+          // Timeout: plano pode já ter sido ativado, manda pro painel
+          setEtapa("confirmado");
+          setTimeout(() => router.replace("/painel"), 2000);
+        }
+      } catch {
+        pollingRef.current = setTimeout(tentarAtualizar, 2500);
+      }
+    }
+
+    setTimeout(tentarAtualizar, 1500);
+  }, [update, router]);
+
+  // ── Abre modal ────────────────────────────────────────────────────────────
+  function abrirModal(tipo: string) {
+    setTipoPlano(tipo);
+    setEtapa("metodo");
+    setMetodoSelecionado("pix");
+    setErro("");
+    setPixData(null);
+    setTentativas(0);
+    setShowModal(true);
+  }
+
+  // ── Formata CPF ───────────────────────────────────────────────────────────
+  function handleCpfChange(e: React.ChangeEvent<HTMLInputElement>) {
     let value = e.target.value.replace(/\D/g, "");
     if (value.length > 11) value = value.slice(0, 11);
     value = value
@@ -45,35 +141,10 @@ export default function PlanosPage() {
       .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
     setCpfInput(value);
     setCpfError("");
-  };
-
-  async function handleCheckout(tipo: string) {
-    setLoading(tipo);
-    try {
-      const res = await fetch("/api/asaas/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo }),
-      });
-      const data = await res.json();
-
-      // Se não tem CPF, abre o modal
-      if (res.status === 400 && data.error?.includes("CPF")) {
-        setPendingTipo(tipo);
-        setShowCpfModal(true);
-        return;
-      }
-
-      if (data.url) window.location.href = data.url;
-      else alert(data.error || "Erro ao iniciar pagamento.");
-    } catch {
-      alert("Erro ao iniciar pagamento. Tente novamente.");
-    } finally {
-      setLoading(null);
-    }
   }
 
-  async function handleSaveCpfAndCheckout() {
+  // ── Salva CPF e continua ──────────────────────────────────────────────────
+  async function salvarCpfEContinuar() {
     const cpfLimpo = cpfInput.replace(/\D/g, "");
     if (cpfLimpo.length !== 11) {
       setCpfError("Digite um CPF válido com 11 dígitos.");
@@ -84,50 +155,78 @@ export default function PlanosPage() {
     setCpfError("");
 
     try {
-      // Salva o CPF no banco
-      const saveRes = await fetch("/api/auth/update-cpf", {
+      const res = await fetch("/api/auth/update-cpf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cpfCnpj: cpfLimpo }),
       });
 
-      if (!saveRes.ok) {
+      if (!res.ok) {
         setCpfError("Erro ao salvar CPF. Tente novamente.");
         return;
       }
 
-      // Agora faz o checkout com o CPF salvo
-      setShowCpfModal(false);
-      setLoading(pendingTipo);
-
-      const res = await fetch("/api/asaas/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: pendingTipo }),
-      });
-      const data = await res.json();
-
-      if (data.url) window.location.href = data.url;
-      else alert(data.error || "Erro ao iniciar pagamento.");
+      await fazerCheckout();
     } catch {
       setCpfError("Erro inesperado. Tente novamente.");
     } finally {
       setSavingCpf(false);
-      setLoading(null);
     }
   }
 
-  const features = [
-    { icon: "📋", text: "Ordens de serviço ilimitadas" },
-    { icon: "📦", text: "Controle de estoque completo" },
-    { icon: "💰", text: "Precificação inteligente" },
-    { icon: "⚡", text: "Módulo de Venda Rápida" },
-    { icon: "📱", text: "Consulta de IMEI integrada" },
-    { icon: "🎧", text: "Suporte prioritário" },
-  ];
+  // ── Faz checkout ──────────────────────────────────────────────────────────
+  async function fazerCheckout() {
+    setLoading(true);
+    setErro("");
 
-  const pad = (n: number) => String(n).padStart(2, "0");
+    try {
+      const res = await fetch("/api/asaas/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: tipoPlano, metodo: metodoSelecionado }),
+      });
 
+      const data = await res.json();
+
+      // Sem CPF → vai para etapa de CPF
+      if (res.status === 400 && data.error?.includes("CPF")) {
+        setEtapa("cpf");
+        return;
+      }
+
+      if (!res.ok) {
+        setErro(data.error || "Erro ao iniciar pagamento.");
+        return;
+      }
+
+      // PIX → exibe QR Code
+      if (data.metodo === "pix") {
+        setPixData(data);
+        setEtapa("pix-aguardando");
+        iniciarPolling();
+        return;
+      }
+
+      // Cartão → redireciona para checkout Asaas
+      if (data.metodo === "cartao" && data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      setErro("Erro ao iniciar pagamento. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Copia código PIX ──────────────────────────────────────────────────────
+  async function copiarPix() {
+    if (!pixData?.copiaCola) return;
+    await navigator.clipboard.writeText(pixData.copiaCola);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2500);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={{
       minHeight: "100vh",
@@ -141,27 +240,24 @@ export default function PlanosPage() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes glow { 0%,100%{box-shadow:0 0 30px rgba(16,185,129,0.3)} 50%{box-shadow:0 0 60px rgba(16,185,129,0.6)} }
-        @keyframes rotateSlow { to { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pixPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .trim-btn { transition: all 0.2s ease; }
         .trim-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(16,185,129,0.5) !important; }
         .mensal-btn { transition: all 0.2s ease; }
         .mensal-btn:hover { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.2) !important; }
+        .metodo-card { transition: all 0.18s ease; cursor: pointer; }
+        .metodo-card:hover { border-color: rgba(16,185,129,0.4) !important; background: rgba(16,185,129,0.06) !important; }
         .cpf-input {
-          width: 100%;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 12px;
-          color: white;
-          font-size: 18px;
-          font-weight: 600;
-          padding: 14px 18px;
-          letter-spacing: 0.08em;
-          outline: none;
-          transition: border-color 0.2s;
-          text-align: center;
+          width: 100%; background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+          color: white; font-size: 18px; font-weight: 600; padding: 14px 18px;
+          letter-spacing: 0.08em; outline: none; transition: border-color 0.2s; text-align: center;
         }
         .cpf-input:focus { border-color: rgba(16,185,129,0.5); }
         .cpf-input::placeholder { color: rgba(255,255,255,0.2); font-weight: 400; letter-spacing: 0.02em; }
+        .copiar-btn { transition: all 0.2s ease; }
+        .copiar-btn:hover { background: rgba(16,185,129,0.15) !important; }
       `}</style>
 
       {/* Background */}
@@ -178,118 +274,348 @@ export default function PlanosPage() {
         }} />
       </div>
 
-      {/* MODAL CPF */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODAL DE PAGAMENTO
+      ═══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
-        {showCpfModal && (
+        {showModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             style={{
               position: "fixed", inset: 0, zIndex: 100,
-              background: "rgba(0,0,0,0.75)",
-              backdropFilter: "blur(8px)",
+              background: "rgba(0,0,0,0.8)",
+              backdropFilter: "blur(10px)",
               display: "flex", alignItems: "center", justifyContent: "center",
               padding: 24,
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              initial={{ opacity: 0, scale: 0.93, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              exit={{ opacity: 0, scale: 0.93, y: 20 }}
+              transition={{ type: "spring", damping: 28, stiffness: 380 }}
               style={{
-                background: "#0e1a14",
-                border: "1px solid rgba(16,185,129,0.25)",
+                background: "#0a0f0c",
+                border: "1px solid rgba(16,185,129,0.2)",
                 borderRadius: 24,
-                padding: "36px 32px",
+                padding: "32px 28px",
                 width: "100%",
                 maxWidth: 420,
                 position: "relative",
               }}
             >
               {/* Fechar */}
-              <button
-                onClick={() => setShowCpfModal(false)}
-                style={{
-                  position: "absolute", top: 16, right: 16,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 8, width: 32, height: 32,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", color: "rgba(255,255,255,0.4)",
-                }}
-              >
-                <X size={14} />
-              </button>
-
-              {/* Ícone */}
-              <div style={{
-                width: 52, height: 52, borderRadius: 14,
-                background: "rgba(16,185,129,0.1)",
-                border: "1px solid rgba(16,185,129,0.2)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                marginBottom: 20,
-              }}>
-                <Shield size={22} color="#10b981" />
-              </div>
-
-              <h2 style={{
-                fontSize: 22, fontWeight: 800, color: "white",
-                letterSpacing: "-0.03em", marginBottom: 8,
-              }}>
-                Informe seu CPF
-              </h2>
-              <p style={{
-                fontSize: 13, color: "rgba(255,255,255,0.38)",
-                lineHeight: 1.6, marginBottom: 28,
-              }}>
-                Necessário para emitir sua cobrança com segurança. Seus dados são protegidos e não são compartilhados.
-              </p>
-
-              <input
-                className="cpf-input"
-                type="text"
-                placeholder="000.000.000-00"
-                value={cpfInput}
-                onChange={handleCpfChange}
-                maxLength={14}
-                autoFocus
-              />
-
-              {cpfError && (
-                <p style={{
-                  fontSize: 12, color: "#f87171",
-                  marginTop: 8, fontWeight: 500,
-                }}>
-                  {cpfError}
-                </p>
+              {etapa !== "confirmado" && (
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    position: "absolute", top: 16, right: 16,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 8, width: 32, height: 32,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", color: "rgba(255,255,255,0.35)",
+                  }}
+                >
+                  <X size={14} />
+                </button>
               )}
 
-              <button
-                onClick={handleSaveCpfAndCheckout}
-                disabled={savingCpf}
-                style={{
-                  width: "100%", marginTop: 20,
-                  padding: "15px 0", borderRadius: 12,
-                  background: "linear-gradient(135deg, #059669, #10b981)",
-                  border: "none", cursor: savingCpf ? "not-allowed" : "pointer",
-                  color: "#011208", fontSize: 14, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  opacity: savingCpf ? 0.7 : 1,
-                  boxShadow: "0 6px 24px rgba(16,185,129,0.3)",
-                }}
-              >
-                {savingCpf
-                  ? <><Loader2 size={15} style={{ animation: "rotateSlow 0.8s linear infinite" }} /> Salvando...</>
-                  : "Confirmar e pagar"}
-              </button>
+              {/* ── ETAPA: Escolher método ── */}
+              {etapa === "metodo" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>
+                      Como prefere pagar?
+                    </h2>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
+                      Plano {tipoPlano} · R$ {tipoPlano === "trimestral" ? "28,90" : "12,90"}
+                    </p>
+                  </div>
 
-              <p style={{
-                fontSize: 11, color: "rgba(255,255,255,0.18)",
-                textAlign: "center", marginTop: 14,
-              }}>
-                🔒 Dados protegidos · Powered by Asaas
-              </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {/* PIX */}
+                    <div
+                      className="metodo-card"
+                      onClick={() => setMetodoSelecionado("pix")}
+                      style={{
+                        border: `1px solid ${metodoSelecionado === "pix" ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.08)"}`,
+                        background: metodoSelecionado === "pix" ? "rgba(16,185,129,0.07)" : "rgba(255,255,255,0.02)",
+                        borderRadius: 14, padding: "16px 18px",
+                        display: "flex", alignItems: "center", gap: 14,
+                      }}
+                    >
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                        background: metodoSelecionado === "pix" ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${metodoSelecionado === "pix" ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <QrCode size={18} color={metodoSelecionado === "pix" ? "#10b981" : "rgba(255,255,255,0.3)"} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: metodoSelecionado === "pix" ? "white" : "rgba(255,255,255,0.6)" }}>
+                          PIX
+                        </p>
+                        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", marginTop: 2 }}>
+                          QR Code aqui mesmo · Confirmação instantânea
+                        </p>
+                      </div>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: "50%",
+                        border: `2px solid ${metodoSelecionado === "pix" ? "#10b981" : "rgba(255,255,255,0.15)"}`,
+                        background: metodoSelecionado === "pix" ? "#10b981" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        {metodoSelecionado === "pix" && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#011208" }} />}
+                      </div>
+                    </div>
+
+                    {/* Cartão */}
+                    <div
+                      className="metodo-card"
+                      onClick={() => setMetodoSelecionado("cartao")}
+                      style={{
+                        border: `1px solid ${metodoSelecionado === "cartao" ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.08)"}`,
+                        background: metodoSelecionado === "cartao" ? "rgba(16,185,129,0.07)" : "rgba(255,255,255,0.02)",
+                        borderRadius: 14, padding: "16px 18px",
+                        display: "flex", alignItems: "center", gap: 14,
+                      }}
+                    >
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                        background: metodoSelecionado === "cartao" ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${metodoSelecionado === "cartao" ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <CreditCard size={18} color={metodoSelecionado === "cartao" ? "#10b981" : "rgba(255,255,255,0.3)"} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: metodoSelecionado === "cartao" ? "white" : "rgba(255,255,255,0.6)" }}>
+                          Cartão de crédito
+                        </p>
+                        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", marginTop: 2 }}>
+                          Redireciona para página segura do Asaas
+                        </p>
+                      </div>
+                      <div style={{
+                        width: 18, height: 18, borderRadius: "50%",
+                        border: `2px solid ${metodoSelecionado === "cartao" ? "#10b981" : "rgba(255,255,255,0.15)"}`,
+                        background: metodoSelecionado === "cartao" ? "#10b981" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        {metodoSelecionado === "cartao" && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#011208" }} />}
+                      </div>
+                    </div>
+                  </div>
+
+                  {erro && (
+                    <p style={{ fontSize: 12, color: "#f87171", fontWeight: 500, textAlign: "center" }}>{erro}</p>
+                  )}
+
+                  <button
+                    onClick={fazerCheckout}
+                    disabled={loading}
+                    style={{
+                      width: "100%", padding: "15px 0", borderRadius: 12,
+                      background: "linear-gradient(135deg, #059669, #10b981)",
+                      border: "none", cursor: loading ? "not-allowed" : "pointer",
+                      color: "#011208", fontSize: 14, fontWeight: 700,
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      opacity: loading ? 0.7 : 1,
+                      boxShadow: "0 6px 24px rgba(16,185,129,0.3)",
+                    }}
+                  >
+                    {loading
+                      ? <Loader2 size={16} style={{ animation: "spin 0.8s linear infinite" }} />
+                      : <>Continuar <ChevronRight size={16} /></>}
+                  </button>
+
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
+                    🔒 Pagamento seguro via Asaas
+                  </p>
+                </div>
+              )}
+
+              {/* ── ETAPA: CPF ── */}
+              {etapa === "cpf" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 12,
+                    background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Shield size={20} color="#10b981" />
+                  </div>
+
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 6 }}>
+                      Informe seu CPF
+                    </h2>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
+                      Necessário para emitir sua cobrança. Seus dados são protegidos.
+                    </p>
+                  </div>
+
+                  <input
+                    className="cpf-input"
+                    type="text"
+                    placeholder="000.000.000-00"
+                    value={cpfInput}
+                    onChange={handleCpfChange}
+                    maxLength={14}
+                    autoFocus
+                  />
+
+                  {cpfError && (
+                    <p style={{ fontSize: 12, color: "#f87171", fontWeight: 500 }}>{cpfError}</p>
+                  )}
+
+                  <button
+                    onClick={salvarCpfEContinuar}
+                    disabled={savingCpf}
+                    style={{
+                      width: "100%", padding: "15px 0", borderRadius: 12,
+                      background: "linear-gradient(135deg, #059669, #10b981)",
+                      border: "none", cursor: savingCpf ? "not-allowed" : "pointer",
+                      color: "#011208", fontSize: 14, fontWeight: 700,
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      opacity: savingCpf ? 0.7 : 1,
+                      boxShadow: "0 6px 24px rgba(16,185,129,0.3)",
+                    }}
+                  >
+                    {savingCpf
+                      ? <Loader2 size={15} style={{ animation: "spin 0.8s linear infinite" }} />
+                      : "Confirmar e pagar"}
+                  </button>
+
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
+                    🔒 Dados protegidos · Powered by Asaas
+                  </p>
+                </div>
+              )}
+
+              {/* ── ETAPA: PIX aguardando ── */}
+              {etapa === "pix-aguardando" && pixData && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 4 }}>
+                      Pague com PIX
+                    </h2>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
+                      Escaneie o QR Code ou copie o código
+                    </p>
+                  </div>
+
+                  {/* QR Code */}
+                  <div style={{
+                    padding: 16, borderRadius: 16,
+                    background: "white",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`data:image/png;base64,${pixData.qrCode}`}
+                      alt="QR Code PIX"
+                      width={200}
+                      height={200}
+                      style={{ display: "block" }}
+                    />
+                  </div>
+
+                  {/* Valor */}
+                  <div style={{
+                    background: "rgba(16,185,129,0.07)",
+                    border: "1px solid rgba(16,185,129,0.18)",
+                    borderRadius: 10, padding: "8px 20px", textAlign: "center",
+                  }}>
+                    <span style={{ fontSize: 13, color: "#34d399", fontWeight: 700 }}>
+                      R$ {pixData.valor.toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+
+                  {/* Copia e Cola */}
+                  <div style={{ width: "100%" }}>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 6, textAlign: "center" }}>
+                      Ou copie o código PIX
+                    </p>
+                    <button
+                      className="copiar-btn"
+                      onClick={copiarPix}
+                      style={{
+                        width: "100%", padding: "12px 16px", borderRadius: 10,
+                        background: "rgba(16,185,129,0.08)",
+                        border: "1px solid rgba(16,185,129,0.2)",
+                        cursor: "pointer", color: copiado ? "#10b981" : "rgba(255,255,255,0.6)",
+                        fontSize: 13, fontWeight: 600,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {copiado
+                        ? <><CheckCheck size={15} color="#10b981" /> Copiado!</>
+                        : <><Copy size={15} /> Copiar código PIX</>}
+                    </button>
+                  </div>
+
+                  {/* Status aguardando */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "10px 16px", borderRadius: 10,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    width: "100%", justifyContent: "center",
+                  }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: "50%", background: "#fbbf24",
+                      animation: "pixPulse 1.5s ease-in-out infinite",
+                    }} />
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>
+                      Aguardando pagamento...
+                      {tentativas > 5 && ` (${tentativas}/24)`}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
+                    Após o pagamento, seu plano é ativado automaticamente
+                  </p>
+                </div>
+              )}
+
+              {/* ── ETAPA: Confirmado ── */}
+              {etapa === "confirmado" && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "8px 0" }}>
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", damping: 14, stiffness: 260 }}
+                    style={{
+                      width: 72, height: 72, borderRadius: "50%",
+                      background: "rgba(16,185,129,0.15)",
+                      border: "1px solid rgba(16,185,129,0.35)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <Check size={34} color="#10b981" strokeWidth={2.5} />
+                  </motion.div>
+
+                  <div style={{ textAlign: "center" }}>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: "#10b981", marginBottom: 6 }}>
+                      Plano ativado!
+                    </h2>
+                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}>
+                      Redirecionando para o painel...
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Loader2 size={14} color="rgba(255,255,255,0.3)" style={{ animation: "spin 1s linear infinite" }} />
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>Carregando painel</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -309,25 +635,21 @@ export default function PlanosPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: "rgba(16,185,129,0.12)",
-            border: "1px solid rgba(16,185,129,0.25)",
+            background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <Wrench size={16} color="#10b981" />
           </div>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>
-            RepairFlow
-          </span>
+          <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em" }}>RepairFlow</span>
         </div>
 
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "7px 14px", borderRadius: 99,
-          background: "rgba(16,185,129,0.07)",
-          border: "1px solid rgba(16,185,129,0.18)",
+          background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.18)",
         }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "glow 2s ease-in-out infinite" }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981", letterSpacing: "0.01em" }}>Conta criada com sucesso</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981" }}>Conta criada com sucesso</span>
         </div>
       </motion.header>
 
@@ -340,20 +662,15 @@ export default function PlanosPage() {
 
         {/* Hero */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           style={{ textAlign: "center", marginBottom: 52 }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
+            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "7px 16px", borderRadius: 99, marginBottom: 28,
-              background: "rgba(245,158,11,0.08)",
-              border: "1px solid rgba(245,158,11,0.25)",
+              background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
             }}
           >
             <Clock size={12} color="#fbbf24" />
@@ -366,9 +683,8 @@ export default function PlanosPage() {
           </motion.div>
 
           <h1 style={{
-            fontSize: "clamp(34px, 5.5vw, 56px)",
-            fontWeight: 800, lineHeight: 1.08,
-            letterSpacing: "-0.035em", marginBottom: 18, color: "white",
+            fontSize: "clamp(34px, 5.5vw, 56px)", fontWeight: 800,
+            lineHeight: 1.08, letterSpacing: "-0.035em", marginBottom: 18,
           }}>
             Sua assistência técnica<br />
             <span style={{
@@ -380,9 +696,8 @@ export default function PlanosPage() {
           </h1>
 
           <p style={{
-            fontSize: 16, color: "rgba(255,255,255,0.38)",
-            lineHeight: 1.75, maxWidth: 460, margin: "0 auto",
-            fontWeight: 400, letterSpacing: "0.005em",
+            fontSize: 16, color: "rgba(255,255,255,0.38)", lineHeight: 1.75,
+            maxWidth: 460, margin: "0 auto", fontWeight: 400,
           }}>
             Profissionalize sua gestão hoje. Cada dia sem o RepairFlow é dinheiro deixado na mesa.
           </p>
@@ -416,7 +731,7 @@ export default function PlanosPage() {
           </div>
         </motion.div>
 
-        {/* Cards */}
+        {/* Cards de planos */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
@@ -425,73 +740,56 @@ export default function PlanosPage() {
 
           {/* MENSAL */}
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
+            initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
             style={{
-              borderRadius: 20,
-              background: "rgba(255,255,255,0.025)",
+              borderRadius: 20, background: "rgba(255,255,255,0.025)",
               border: "1px solid rgba(255,255,255,0.07)",
-              padding: "28px 28px 32px",
-              display: "flex", flexDirection: "column", gap: 24,
+              padding: "28px 28px 32px", display: "flex", flexDirection: "column", gap: 24,
             }}
           >
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                 <div style={{
-                  width: 30, height: 30, borderRadius: 8,
-                  background: "rgba(255,255,255,0.05)",
+                  width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <Zap size={14} color="rgba(255,255,255,0.4)" />
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)", letterSpacing: "0.01em" }}>Mensal</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Mensal</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 6 }}>
-                <span style={{ fontSize: 48, fontWeight: 800, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                  R$ 12,90
-                </span>
+                <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>R$ 12,90</span>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", marginLeft: 2, fontWeight: 500 }}>/mês</span>
               </div>
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.2)", fontWeight: 400 }}>
-                Sem compromisso de longo prazo
-              </p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.2)" }}>Sem compromisso de longo prazo</p>
             </div>
 
             <ul style={{ display: "flex", flexDirection: "column", gap: 11 }}>
               {features.map((f, i) => (
                 <li key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 15 }}>{f.icon}</span>
-                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", fontWeight: 400 }}>{f.text}</span>
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.38)" }}>{f.text}</span>
                 </li>
               ))}
             </ul>
 
             <button
               className="mensal-btn"
-              onClick={() => handleCheckout("mensal")}
-              disabled={!!loading}
+              onClick={() => abrirModal("mensal")}
               style={{
                 width: "100%", padding: "14px 0", borderRadius: 12, cursor: "pointer",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.5)",
-                fontSize: 14, fontWeight: 600,
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.5)", fontSize: 14, fontWeight: 600,
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                opacity: !!loading ? 0.5 : 1,
               }}
             >
-              {loading === "mensal"
-                ? <Loader2 size={15} style={{ animation: "rotateSlow 0.8s linear infinite" }} />
-                : "Começar agora"}
+              Começar agora
             </button>
           </motion.div>
 
           {/* TRIMESTRAL */}
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
+            initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             style={{ position: "relative" }}
           >
             <div style={{
@@ -542,9 +840,7 @@ export default function PlanosPage() {
                     }}>−25%</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span style={{ fontSize: 48, fontWeight: 800, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>
-                      R$ 28,90
-                    </span>
+                    <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>R$ 28,90</span>
                     <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>/3 meses</span>
                   </div>
                 </div>
@@ -561,9 +857,11 @@ export default function PlanosPage() {
 
               <ul style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {features.map((f, i) => (
-                  <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                  <motion.li key={i}
+                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.04 }}
-                    style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
                     <div style={{
                       width: 20, height: 20, borderRadius: 6,
                       background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)",
@@ -571,7 +869,7 @@ export default function PlanosPage() {
                     }}>
                       <Check size={11} color="#10b981" />
                     </div>
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: 400 }}>{f.text}</span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>{f.text}</span>
                   </motion.li>
                 ))}
               </ul>
@@ -579,8 +877,7 @@ export default function PlanosPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <motion.button
                   className="trim-btn"
-                  onClick={() => handleCheckout("trimestral")}
-                  disabled={!!loading}
+                  onClick={() => abrirModal("trimestral")}
                   whileTap={{ scale: 0.98 }}
                   style={{
                     width: "100%", padding: "16px 0", borderRadius: 12, cursor: "pointer",
@@ -588,12 +885,9 @@ export default function PlanosPage() {
                     border: "none", color: "#011208", fontSize: 14, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     boxShadow: "0 8px 28px rgba(16,185,129,0.35)",
-                    opacity: !!loading ? 0.7 : 1,
                   }}
                 >
-                  {loading === "trimestral"
-                    ? <Loader2 size={16} style={{ animation: "rotateSlow 0.8s linear infinite" }} />
-                    : <>Quero economizar R$ 9,80 <ChevronRight size={16} /></>}
+                  Quero economizar R$ 9,80 <ChevronRight size={16} />
                 </motion.button>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -620,7 +914,7 @@ export default function PlanosPage() {
             width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
             background: "linear-gradient(135deg, #f97316, #ef4444)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, fontWeight: 700, color: "white",
+            fontSize: 16, fontWeight: 700,
           }}>R</div>
           <div>
             <div style={{ display: "flex", gap: 2, marginBottom: 8 }}>
@@ -644,7 +938,7 @@ export default function PlanosPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Lock size={12} color="rgba(255,255,255,0.2)" />
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", fontWeight: 500 }}>
-              Pagamento 100% seguro via Asaas · Pix, Boleto ou Cartão
+              Pagamento 100% seguro via Asaas · Pix ou Cartão
             </span>
           </div>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.12)" }}>
