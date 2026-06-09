@@ -41,8 +41,8 @@ export function ExpiryBanner() {
 
   const expiresDate = new Date(planExpiresAt);
   const now         = new Date();
-  const diffMs      = expiresDate.getTime() - now.getTime();
-  const diffDays    = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffMs = expiresDate.getTime() - now.getTime();
+const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
   // Só exibe se faltar 7 dias ou menos (e ainda não expirou)
   if (diffDays > 7 || diffDays < 0) return null;

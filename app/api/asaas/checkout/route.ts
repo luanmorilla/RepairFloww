@@ -1,3 +1,4 @@
+// app/api/asaas/checkout/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +33,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Loja não encontrada" }, { status: 404 });
     }
 
-    // Verifica se o usuário tem CPF cadastrado
     if (!user.cpfCnpj) {
       return NextResponse.json(
         { error: "CPF não encontrado. Por favor, atualize seu cadastro." },
@@ -40,11 +40,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Garante que o CPF vai só com números, sem pontos ou traço
     const cpfLimpo = user.cpfCnpj.replace(/\D/g, "");
 
-    // ✅ URL de redirecionamento após pagamento confirmado
-    const redirectUrl = `${process.env.NEXTAUTH_URL}/painel/ativado`;
+    // URL que o Asaas exibe como botão "Voltar ao site" após confirmação
+    const successUrl = `${process.env.NEXTAUTH_URL}/painel/ativado`;
 
     // 1. Cria ou reutiliza cliente no Asaas
     let asaasCustomerId = user.shop.asaasCustomerId;
@@ -93,8 +92,6 @@ export async function POST(request: Request) {
         cycle: plano.ciclo,
         description: `RepairFlow - Plano ${tipo}`,
         externalReference: user.shop.id,
-        // ✅ CORRIGIDO: redireciona para /painel/ativado após pagamento
-        redirectUrl,
       }),
     });
 
@@ -105,16 +102,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Erro ao criar assinatura" }, { status: 500 });
     }
 
-    // 3. Salva o ID da assinatura e o tipo do plano no banco
+    // 3. Salva ID da assinatura e tipo do plano no banco
     await prisma.shop.update({
       where: { id: user.shop.id },
       data: {
         asaasSubscriptionId: subscription.id,
-        planType: tipo, // ✅ salva "mensal" ou "trimestral" para o webhook usar
+        planType: tipo,
       },
     });
 
-    // 4. Pega o link de pagamento da primeira cobrança
+    // 4. Busca a primeira cobrança da assinatura
     const cobrancaRes = await fetch(
       `${ASAAS_API}/subscriptions/${subscription.id}/payments`,
       { headers: { "access_token": ASAAS_KEY } }
@@ -122,17 +119,23 @@ export async function POST(request: Request) {
     const cobrancas = await cobrancaRes.json();
     const primeiraCobranca = cobrancas.data?.[0];
 
-    // ✅ CORRIGIDO: força o redirectUrl também na cobrança individual
-    if (primeiraCobranca?.id) {
-      await fetch(`${ASAAS_API}/payments/${primeiraCobranca.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "access_token": ASAAS_KEY,
-        },
-        body: JSON.stringify({ redirectUrl }),
-      });
+    if (!primeiraCobranca?.id) {
+      return NextResponse.json({ error: "Não foi possível gerar o link de pagamento" }, { status: 500 });
     }
+
+    // 5. Atualiza a cobrança com successUrl (botão "Voltar ao site" no checkout)
+    //    e redirectUrl (redirect automático em cartão/boleto)
+    await fetch(`${ASAAS_API}/payments/${primeiraCobranca.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "access_token": ASAAS_KEY,
+      },
+      body: JSON.stringify({
+        successUrl,      // ← exibe botão "Voltar ao site" após confirmação (funciona no PIX)
+        redirectUrl: successUrl, // ← redirect automático (funciona em cartão/boleto)
+      }),
+    });
 
     const linkPagamento = primeiraCobranca?.invoiceUrl;
 
