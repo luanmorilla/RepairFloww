@@ -86,38 +86,43 @@ export default function PlanosPage() {
     }
   }, [showModal]);
 
-  // ── Polling: aguarda webhook confirmar pagamento PIX ──────────────────────
+  // ── Polling: consulta direto no banco, atualiza sessão só ao confirmar ────
   const iniciarPolling = useCallback(async () => {
     let count = 0;
 
     async function tentarAtualizar() {
       try {
-        const novaSession = await update();
-        const planStatus = (novaSession?.user as any)?.planStatus;
+        // Consulta direto no banco — bem mais rápido que depender do JWT
+        const res = await fetch("/api/auth/plan-status");
+        const { planStatus } = await res.json();
 
         if (planStatus === "active") {
+          // Atualiza sessão só uma vez, quando confirmado
+          await update();
           setEtapa("confirmado");
-          setTimeout(() => router.replace("/painel"), 2000);
+          setTimeout(() => router.replace("/painel"), 1500);
           return;
         }
 
         count++;
         setTentativas(count);
 
-        if (count < 24) {
-          // Tenta a cada 2.5s por até ~60s
-          pollingRef.current = setTimeout(tentarAtualizar, 2500);
+        if (count < 40) {
+          // Tenta a cada 1.5s por até ~60s
+          pollingRef.current = setTimeout(tentarAtualizar, 1500);
         } else {
-          // Timeout: plano pode já ter sido ativado, manda pro painel
+          // Timeout: manda pro painel de qualquer forma
+          await update();
           setEtapa("confirmado");
-          setTimeout(() => router.replace("/painel"), 2000);
+          setTimeout(() => router.replace("/painel"), 1500);
         }
       } catch {
-        pollingRef.current = setTimeout(tentarAtualizar, 2500);
+        pollingRef.current = setTimeout(tentarAtualizar, 1500);
       }
     }
 
-    setTimeout(tentarAtualizar, 1500);
+    // Pequeno delay inicial para o webhook ter tempo de chegar
+    setTimeout(tentarAtualizar, 1000);
   }, [update, router]);
 
   // ── Abre modal ────────────────────────────────────────────────────────────
@@ -574,7 +579,7 @@ export default function PlanosPage() {
                     }} />
                     <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>
                       Aguardando pagamento...
-                      {tentativas > 5 && ` (${tentativas}/24)`}
+                      {tentativas > 5 && ` (${tentativas}/40)`}
                     </span>
                   </div>
 
