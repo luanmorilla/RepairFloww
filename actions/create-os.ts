@@ -4,7 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function createServiceOrderWithPricing(data: any, shopId: string) {
-  const { customer, deviceId, repairTypeId, defectDescription, partCost } = data;
+  const {
+    customer,
+    deviceId,
+    repairTypeId,
+    defectDescription,
+    partCost,
+    pricingMode,
+    manualPrice,
+    discountAmount,
+    finalPrice,
+  } = data;
 
   // 1. Valida catálogo
   const [modelCatalog, repairCatalog] = await Promise.all([
@@ -16,21 +26,29 @@ export async function createServiceOrderWithPricing(data: any, shopId: string) {
     throw new Error("Aparelho ou tipo de reparo não encontrado no catálogo.");
   }
 
-  // 2. Mão de obra por dificuldade
+  // 2. Mão de obra por dificuldade (preservada intacta)
   let maoDeObraBase = 100.0;
-  if (repairCatalog.difficulty === "Média")     maoDeObraBase = 160.0;
-  if (repairCatalog.difficulty === "Alta")      maoDeObraBase = 250.0;
+  if (repairCatalog.difficulty === "Média")      maoDeObraBase = 160.0;
+  if (repairCatalog.difficulty === "Alta")       maoDeObraBase = 250.0;
   if (repairCatalog.difficulty === "Muito Alta") maoDeObraBase = 450.0;
 
-  // 3. Taxa de risco baseada no valor de mercado
+  // 3. Taxa de risco baseada no valor de mercado (preservada intacta)
   const deviceValue = Number(modelCatalog.marketValue);
-  const taxaRisco = deviceValue * (deviceValue > 5000 ? 0.06 : 0.04);
+  const taxaRisco   = deviceValue * (deviceValue > 5000 ? 0.06 : 0.04);
 
-  // 4. Preços finais
-  const suggestedPrice   = maoDeObraBase + Number(partCost) + taxaRisco;
-  const estimatedProfit  = suggestedPrice - Number(partCost);
+  // 4. Preço automático (lógica original preservada como fallback)
+  const autoPrice = maoDeObraBase + Number(partCost) + taxaRisco;
 
-  // 5. Transação no banco
+  // 5. Decide qual preço salvar
+  //    "manual" → usa o valor digitado pelo técnico
+  //    "auto"   → usa o finalPrice já calculado pela página (Gemini + desconto)
+  const isManual       = pricingMode === "manual";
+  const effectivePrice = isManual
+    ? Number(manualPrice)
+    : Number(finalPrice ?? autoPrice);
+  const effectiveProfit = effectivePrice - Number(partCost);
+
+  // 6. Transação no banco
   return await prisma.$transaction(async (tx) => {
 
     // Garante que a loja existe
@@ -57,21 +75,22 @@ export async function createServiceOrderWithPricing(data: any, shopId: string) {
       },
     });
 
-    // Cria OS — todos os campos do schema preenchidos corretamente
+    // Cria OS
     const newOs = await tx.serviceOrder.create({
       data: {
         shopId,
         customerId:   newCustomer.id,
         deviceId:     newDevice.id,
-        repairTypeId: repairCatalog.id,        // ✅ FK do catálogo salva corretamente
+        repairTypeId: repairCatalog.id,
         defect:       repairCatalog.name + (defectDescription ? ` - ${defectDescription}` : ""),
         notes:        defectDescription ? String(defectDescription) : null,
         status:       "RECEIVED",
-        servicePrice: suggestedPrice,
-        totalPrice:   suggestedPrice,
-        profit:       estimatedProfit,
-        warrantyDays: shopExists.standardWarranty, // ✅ usa garantia padrão da loja
-        // technicianId: null (opcional, atribuído depois pelo admin)
+        servicePrice:  effectivePrice,
+        totalPrice:    effectivePrice,
+        profit:        effectiveProfit,
+        warrantyDays:  shopExists.standardWarranty,
+        pricingMode:   isManual ? "manual" : "auto",
+        manualPrice:   isManual ? Number(manualPrice) : null,
       },
     });
 

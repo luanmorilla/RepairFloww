@@ -41,7 +41,7 @@ model User {
   name      String
   email     String   @unique
   password  String
-  cpfCnpj   String?  // CPF do dono da assistência
+  cpfCnpj   String?
   role      Role     @default(TECHNICIAN)
   shopId    String
   shop      Shop     @relation(fields: [shopId], references: [id])
@@ -120,6 +120,11 @@ model ServiceOrder {
   servicePrice  Float @default(0)
   totalPrice    Float @default(0)
   profit        Float @default(0)
+
+  // ── Precificação ──────────────────────────────────────────────────────────
+  pricingMode   String  @default("auto")  // "auto" | "manual"
+  manualPrice   Float?                    // preenchido somente no modo manual
+  // ─────────────────────────────────────────────────────────────────────────
 
   deadline     DateTime?
   warrantyDays Int       @default(90)

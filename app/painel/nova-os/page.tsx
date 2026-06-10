@@ -23,6 +23,9 @@ interface Repair {
   difficulty: string;
 }
 
+// ─── Tipo do modo de precificação ────────────────────────────────────────────
+type PricingMode = "auto" | "manual";
+
 export default function NewOSPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -42,14 +45,22 @@ export default function NewOSPage() {
 
   const [partCost, setPartCost] = useState<string>("");
 
-  // ── Desconto ──────────────────────────────────────────────────────────────
+  // ── Desconto ─────────────────────────────────────────────────────────────
   const [discountType, setDiscountType] = useState<"%" | "R$">("%");
   const [discountValue, setDiscountValue] = useState<string>("");
 
-  // ── Preço ajustado invisível ──────────────────────────────────────────────
+  // ── Preço ajustado invisível (Gemini) ─────────────────────────────────────
   const [adjustedPrice, setAdjustedPrice] = useState<number | null>(null);
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const marketFetchRef = useRef<string>("");
+
+  // ── NOVO: Modo de precificação ────────────────────────────────────────────
+  const [pricingMode, setPricingMode] = useState<PricingMode>("auto");
+  const [manualPrice, setManualPrice] = useState<string>("");
+
+  // ── NOVO: Edição do valor automático ──────────────────────────────────────
+  const [editingAutoPrice, setEditingAutoPrice] = useState(false);
+  const [editedAutoPrice, setEditedAutoPrice] = useState<string>("");
 
   // ── Carrega aparelhos e serviços ──────────────────────────────────────────
   useEffect(() => {
@@ -76,7 +87,7 @@ export default function NewOSPage() {
     loadData();
   }, []);
 
-  // ── Motor de precificação ─────────────────────────────────────────────────
+  // ── Motor de precificação (preservado intacto) ────────────────────────────
   let subtotal = 0;
   let riskValue = 0;
   let maoDeObra = 0;
@@ -92,8 +103,15 @@ export default function NewOSPage() {
     subtotal = maoDeObra + (Number(partCost) || 0) + riskValue;
   }
 
-  // ── Consulta mercado invisível ────────────────────────────────────────────
+  // ── Consulta Gemini (só roda no modo automático) ──────────────────────────
   useEffect(() => {
+    // Se estiver no modo manual, não consulta o Gemini
+    if (pricingMode === "manual") {
+      setAdjustedPrice(null);
+      marketFetchRef.current = "";
+      return;
+    }
+
     if (!selectedDevice || !selectedRepair) {
       setAdjustedPrice(null);
       marketFetchRef.current = "";
@@ -104,7 +122,6 @@ export default function NewOSPage() {
     if (key === marketFetchRef.current) return;
     marketFetchRef.current = key;
 
-    // Reseta enquanto busca novo preço
     setAdjustedPrice(null);
 
     const timer = setTimeout(async () => {
@@ -123,27 +140,47 @@ export default function NewOSPage() {
         const data = await res.json();
         if (data.success && data.adjustedPrice) {
           setAdjustedPrice(data.adjustedPrice);
+          // Reseta edição manual do automático quando chega novo preço
+          setEditingAutoPrice(false);
+          setEditedAutoPrice("");
         }
       } catch {
-        // silencioso — usa subtotal normal como fallback
+        // silencioso — usa subtotal como fallback
       } finally {
         setFetchingPrice(false);
       }
     }, 900);
 
     return () => clearTimeout(timer);
-  }, [selectedDevice, selectedRepair, partCost, subtotal]);
+  }, [selectedDevice, selectedRepair, partCost, subtotal, pricingMode]);
 
-  // ── Preço a exibir (ajustado ou subtotal engine como fallback) ────────────
-  const displayPrice = adjustedPrice ?? subtotal;
+  // ── Preço base do modo automático ─────────────────────────────────────────
+  const autoBasePrice = adjustedPrice ?? subtotal;
 
-  // ── Desconto sobre o preço exibido ────────────────────────────────────────
+  // ── Preço exibido considerando edição manual do automático ────────────────
+  const displayPrice = editingAutoPrice
+    ? (Number(editedAutoPrice) || autoBasePrice)
+    : autoBasePrice;
+
+  // ── Desconto ──────────────────────────────────────────────────────────────
   const discountRaw = Number(discountValue) || 0;
   const discountAmount =
     discountType === "%"
       ? Math.min((displayPrice * discountRaw) / 100, displayPrice)
       : Math.min(discountRaw, displayPrice);
   const displayFinal = displayPrice - discountAmount;
+
+  // ── Quando mudar o modo, limpa estados relacionados ───────────────────────
+  function handlePricingModeChange(mode: PricingMode) {
+    setPricingMode(mode);
+    setEditingAutoPrice(false);
+    setEditedAutoPrice("");
+    setDiscountValue("");
+    if (mode === "manual") {
+      setAdjustedPrice(null);
+      marketFetchRef.current = "";
+    }
+  }
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -152,6 +189,11 @@ export default function NewOSPage() {
 
     if (!selectedDevice || !selectedRepair) {
       setError("Selecione um aparelho e um serviço nas sugestões.");
+      return;
+    }
+
+    if (pricingMode === "manual" && (!manualPrice || Number(manualPrice) <= 0)) {
+      setError("Informe um valor válido para o serviço no modo manual.");
       return;
     }
 
@@ -173,6 +215,8 @@ export default function NewOSPage() {
       repairTypeId: selectedRepair.id,
       defectDescription: formData.get("defectDescription"),
       partCost: Number(partCost),
+      pricingMode,                                          // ← novo
+      manualPrice: pricingMode === "manual" ? Number(manualPrice) : null, // ← novo
       discountAmount,
       finalPrice: displayFinal,
     };
@@ -190,20 +234,22 @@ export default function NewOSPage() {
     }
   }
 
+  const showPricePanel = selectedDevice && selectedRepair;
+
   return (
     <div className="min-h-screen bg-[#050505] p-4 md:p-8 text-white">
       <div className="max-w-2xl mx-auto bg-zinc-950 p-6 md:p-8 rounded-2xl border border-zinc-900 shadow-2xl">
-      <div className="flex items-center justify-between mb-6 border-b border-zinc-900 pb-4">
-  <h1 className="text-2xl font-bold">Nova Ordem de Serviço</h1>
-  <button
-    type="button"
-    onClick={() => router.push("/painel")}
-    className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition"
-    title="Cancelar e voltar"
-  >
-    ✕
-  </button>
-</div>
+        <div className="flex items-center justify-between mb-6 border-b border-zinc-900 pb-4">
+          <h1 className="text-2xl font-bold">Nova Ordem de Serviço</h1>
+          <button
+            type="button"
+            onClick={() => router.push("/painel")}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition"
+            title="Cancelar e voltar"
+          >
+            ✕
+          </button>
+        </div>
 
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -367,8 +413,109 @@ export default function NewOSPage() {
             />
           </div>
 
-          {/* PAINEL DE PREÇO AO VIVO */}
-          {selectedDevice && selectedRepair && (
+          {/* ── NOVO: SELETOR DE MODO DE PRECIFICAÇÃO ─────────────────────── */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+            <p className="text-xs text-zinc-400 font-medium uppercase tracking-wide">
+              💰 Precificação
+            </p>
+
+            {/* Opção: Automática */}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center mt-0.5">
+                <input
+                  type="radio"
+                  name="pricingMode"
+                  value="auto"
+                  checked={pricingMode === "auto"}
+                  onChange={() => handlePricingModeChange("auto")}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    pricingMode === "auto"
+                      ? "border-emerald-500"
+                      : "border-zinc-600 group-hover:border-zinc-400"
+                  }`}
+                >
+                  {pricingMode === "auto" && (
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white leading-tight">
+                  Automática
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  RepairFlow calcula o valor automaticamente.
+                </p>
+              </div>
+            </label>
+
+            {/* Opção: Manual */}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center mt-0.5">
+                <input
+                  type="radio"
+                  name="pricingMode"
+                  value="manual"
+                  checked={pricingMode === "manual"}
+                  onChange={() => handlePricingModeChange("manual")}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    pricingMode === "manual"
+                      ? "border-blue-500"
+                      : "border-zinc-600 group-hover:border-zinc-400"
+                  }`}
+                >
+                  {pricingMode === "manual" && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white leading-tight">
+                  Manual
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Eu vou informar o valor manualmente.
+                </p>
+
+                {/* Campo de valor manual — aparece somente quando selecionado */}
+                {pricingMode === "manual" && (
+                  <div className="mt-3">
+                    <label className="text-xs text-zinc-400 font-medium block mb-1">
+                      Valor do Serviço
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-zinc-400 font-medium">R$</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        className="bg-zinc-800 border-zinc-700 focus:border-blue-500 flex-1"
+                        value={manualPrice}
+                        onChange={(e) => setManualPrice(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    {manualPrice && Number(manualPrice) > 0 && (
+                      <p className="text-xs text-blue-400 mt-1.5">
+                        Valor definido: R$ {Number(manualPrice).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
+          {/* ── FIM DO SELETOR ────────────────────────────────────────────── */}
+
+          {/* PAINEL DE PREÇO — MODO AUTOMÁTICO */}
+          {showPricePanel && pricingMode === "auto" && (
             <div className="bg-emerald-900/20 border border-emerald-500/30 p-4 rounded-xl space-y-2 mt-6">
               <h3 className="text-emerald-500 font-bold mb-2">
                 Resumo do Orçamento Sugerido
@@ -421,6 +568,55 @@ export default function NewOSPage() {
                 )}
               </div>
 
+              {/* ── NOVO: Botão "Editar valor" + campo de ajuste ────────────── */}
+              <div className="pt-2 border-t border-emerald-500/20">
+                {!editingAutoPrice ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingAutoPrice(true);
+                      setEditedAutoPrice(autoBasePrice.toFixed(2));
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition"
+                  >
+                    <span>✏️</span>
+                    <span>Editar valor sugerido</span>
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-xs text-zinc-400 font-medium block">
+                      Ajustar valor sugerido
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-zinc-400">R$</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="bg-zinc-900 border-zinc-700 focus:border-emerald-500 flex-1"
+                        value={editedAutoPrice}
+                        onChange={(e) => setEditedAutoPrice(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingAutoPrice(false);
+                          setEditedAutoPrice("");
+                        }}
+                        className="text-xs text-zinc-500 hover:text-zinc-300 transition px-2 py-1 rounded bg-zinc-800 border border-zinc-700 whitespace-nowrap"
+                      >
+                        Usar sugerido
+                      </button>
+                    </div>
+                    <p className="text-xs text-amber-400">
+                      Valor original: R$ {autoBasePrice.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {/* ── FIM botão editar ─────────────────────────────────────────── */}
+
               {/* Preço final */}
               <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-emerald-500/30 mt-2">
                 <span>
@@ -438,9 +634,29 @@ export default function NewOSPage() {
             </div>
           )}
 
+          {/* PAINEL DE PREÇO — MODO MANUAL */}
+          {showPricePanel && pricingMode === "manual" && manualPrice && Number(manualPrice) > 0 && (
+            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl mt-2">
+              <div className="flex justify-between text-lg font-bold text-white">
+                <span>Valor do Serviço:</span>
+                <span className="text-blue-400">
+                  R$ {Number(manualPrice).toFixed(2)}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">
+                Valor definido manualmente pelo técnico.
+              </p>
+            </div>
+          )}
+
           <Button
             type="submit"
-            disabled={loading || !selectedDevice || !selectedRepair}
+            disabled={
+              loading ||
+              !selectedDevice ||
+              !selectedRepair ||
+              (pricingMode === "manual" && (!manualPrice || Number(manualPrice) <= 0))
+            }
             className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold mt-4"
           >
             {loading ? "Processando..." : "Gerar OS com este Orçamento"}
