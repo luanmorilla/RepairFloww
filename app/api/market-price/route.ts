@@ -1,83 +1,140 @@
-import { NextResponse } from "next/server";
+/**
+ * app/api/market-price/route.ts
+ * Rota de consulta de precificação de mercado via Gemini.
+ *
+ * Fluxo:
+ *   1. Recebe contexto do aparelho e serviço
+ *   2. Consulta Gemini com prompt especializado em assistência técnica BR
+ *   3. Faz parse robusto da resposta (com fallbacks em cascata)
+ *   4. Valida o preço via engine antes de retornar
+ */
+
+import { NextResponse }                         from "next/server";
+import { validarPrecoFinal, type PerfilAssistencia } from "@/lib/pricing-engine";
 
 export async function POST(request: Request) {
   try {
-    const { device, service, partCost, subtotal } = await request.json();
+    const body = await request.json();
 
-    const hasPart = Number(partCost) > 0;
+    const device:      string             = String(body.device      ?? "");
+    const service:     string             = String(body.service     ?? "");
+    const partCost:    number             = Number(body.partCost)    || 0;
+    const subtotal:    number             = Number(body.subtotal)    || 0;
+    const marketValue: number             = Number(body.marketValue) || 0;
+    const perfil:      PerfilAssistencia  = body.perfil ?? "equilibrado";
 
-    const prompt = `Você é um especialista em assistências técnicas de celular no Brasil.
-Estime o preço médio cobrado no mercado brasileiro para:
-- Serviço: "${service}"
-- Aparelho: "${device}"
-- Custo da peça: R$ ${partCost}
+    const hasPart = partCost > 0;
 
-Responda SOMENTE com JSON puro, sem texto antes ou depois, sem markdown, sem explicação:
-{"precoMin":150,"precoMax":300,"precoMedio":220}`;
+    // ── Prompt especializado ───────────────────────────────────────────────────
+    // Instrui o Gemini a raciocinar como gestor experiente de assistência técnica
+    // brasileira, não como IA genérica. Não menciona algoritmos nem IA.
+    const prompt = `Você é um gestor sênior com 15 anos de experiência em assistência técnica de celulares no Brasil.
 
-    const response = await fetch(
+Preciso que você estime o preço real que uma assistência técnica profissional e bem estruturada cobraria por este serviço:
+
+Aparelho: ${device}
+Serviço:  ${service}
+${hasPart ? `Custo da peça: R$ ${partCost.toFixed(2)}` : "Serviço sem reposição de peça"}
+
+Raciocine como gestor de negócio considerando obrigatoriamente:
+1. Faixa de preço real praticada no mercado brasileiro para este aparelho específico
+2. Complexidade técnica e tempo médio de execução deste serviço
+3. Risco operacional: chance de retrabalho, sensibilidade dos componentes, dificuldade de desmontagem
+4. Responsabilidade financeira: custo de um erro neste aparelho específico
+5. Margem mínima para a assistência ser sustentável (cobrir overhead, garantia, mão de obra)
+6. Competitividade: preço que o cliente aceita pagar sem buscar o concorrente
+7. Perfil do aparelho: clientes de aparelhos premium aceitam faixas de preço diferentes de aparelhos básicos
+
+${hasPart
+  ? `Com custo de peça de R$ ${partCost.toFixed(2)}, o preço final deve cobrir: peça + mão de obra especializada + overhead + risco operacional + margem de lucro real.`
+  : `Serviço de mão de obra pura: considere tempo de execução, expertise técnica necessária, risco de dano acidental e garantia do serviço.`
+}
+
+Importante: preços abaixo do mercado prejudicam a sustentabilidade da assistência. Preços acima espantam o cliente. Busque o equilíbrio profissional real.
+
+Responda SOMENTE com JSON puro, sem markdown, sem texto adicional:
+{"precoMin":0,"precoMax":0,"precoMedio":0,"precoIdeal":0}
+
+precoIdeal = o preço exato que você cobraria se fosse dono desta assistência, equilibrando lucro real e competitividade de mercado.`;
+
+    // ── Chamada Gemini ─────────────────────────────────────────────────────────
+    const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 150 },
+          generationConfig: {
+            temperature:     0.10,  // baixa temperatura = mais consistente
+            maxOutputTokens: 250,
+          },
         }),
       }
     );
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    const jsonMatch = clean.match(/\{[^{}]*"precoMedio"[^{}]*\}/);
+    if (!geminiResponse.ok) {
+      throw new Error(`Gemini HTTP ${geminiResponse.status}`);
+    }
 
-    let precoMedio: number;
+    const geminiData = await geminiResponse.json();
+    const rawText    = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      precoMedio = Number(parsed.precoMedio);
-    } else {
+    // ── Parse robusto em cascata ───────────────────────────────────────────────
+    // Tenta 3 estratégias antes de cair no fallback técnico
+
+    let precoIdeal = 0;
+    let precoMedio = 0;
+
+    try {
+      // Estratégia 1: parse direto do texto limpo
+      const clean = rawText.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+      precoIdeal = Number(parsed.precoIdeal) || 0;
+      precoMedio = Number(parsed.precoMedio)  || 0;
+    } catch {
       try {
-        const parsed = JSON.parse(clean);
-        precoMedio = Number(parsed.precoMedio);
+        // Estratégia 2: extrai o primeiro objeto JSON encontrado no texto
+        const jsonMatch = rawText.match(/\{[^{}]*"precoIdeal"[^{}]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          precoIdeal = Number(parsed.precoIdeal) || 0;
+          precoMedio = Number(parsed.precoMedio)  || 0;
+        }
       } catch {
-        // Fallback se Gemini falhar completamente
-        precoMedio = hasPart ? Number(partCost) * 2 : Number(subtotal) * 0.85;
+        // Estratégia 3: extrai números individualmente via regex
+        const ideaMatch  = rawText.match(/"precoIdeal"\s*:\s*(\d+(?:\.\d+)?)/);
+        const medioMatch = rawText.match(/"precoMedio"\s*:\s*(\d+(?:\.\d+)?)/);
+        precoIdeal = ideaMatch  ? Number(ideaMatch[1])  : 0;
+        precoMedio = medioMatch ? Number(medioMatch[1]) : 0;
       }
     }
 
-    // ── Lógica de margem invisível ──────────────────────────────────────────
-    // COM PEÇA:
-    //   candidato 1 → média mercado × 1.35  (35% acima da média)
-    //   candidato 2 → custo da peça × 2.8   (markup de 2.8× na peça)
-    //   floor       → nunca menos que 70% do subtotal calculado pela engine
-    //   teto        → subtotal da engine (não cobra absurdo)
-    //
-    // SEM PEÇA:
-    //   candidato 1 → média mercado × 1.25  (25% acima da média)
-    //   floor       → nunca menos que 75% do subtotal calculado pela engine
-    //   teto        → subtotal da engine
-
-    let adjustedPrice: number;
-
-    if (hasPart) {
-      const byMarket   = Math.round(precoMedio * 1.35);
-      const byPartCost = Math.round(Number(partCost) * 2.8);
-      const floor      = Math.round(Number(subtotal) * 0.70);
-      const ceiling    = Math.round(Number(subtotal));
-      adjustedPrice = Math.min(Math.max(byMarket, byPartCost, floor), ceiling);
-    } else {
-      const byMarket = Math.round(precoMedio * 1.25);
-      const floor    = Math.round(Number(subtotal) * 0.75);
-      const ceiling  = Math.round(Number(subtotal));
-      adjustedPrice = Math.min(Math.max(byMarket, floor), ceiling);
+    // Fallback conservador: se o Gemini não retornou nada utilizável
+    if (precoIdeal <= 0 && precoMedio <= 0) {
+      const fallback = hasPart
+        ? partCost * 2.2   // markup razoável sobre o custo da peça
+        : subtotal * 0.95; // próximo do subtotal técnico
+      precoIdeal = fallback;
+      precoMedio = fallback;
     }
+
+    // Usa precoIdeal como base; recorre ao precoMedio se necessário
+    const precoGemini = precoIdeal > 0 ? precoIdeal : precoMedio;
+
+    // ── Validação inteligente via engine ───────────────────────────────────────
+    const adjustedPrice = validarPrecoFinal({
+      precoGemini,
+      subtotal,
+      partCost,
+      marketValue,
+      perfil,
+    });
 
     return NextResponse.json({ success: true, adjustedPrice });
 
   } catch (error) {
-    console.error("Erro market-price:", error);
+    console.error("[market-price] Erro:", error);
     return NextResponse.json(
       { success: false, adjustedPrice: null },
       { status: 500 }

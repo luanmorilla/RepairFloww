@@ -1,9 +1,48 @@
+/**
+ * actions/create-os.ts
+ * Server action para criação de Ordem de Serviço com precificação validada.
+ *
+ * Segurança: o preço final é SEMPRE recalculado no servidor.
+ * O valor enviado pelo frontend é descartado e reconstruído a partir
+ * dos inputs brutos, impossibilitando manipulação via DevTools.
+ */
+
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { prisma }           from "@/lib/prisma";
+import { revalidatePath }   from "next/cache";
+import { calcularPrecoBase } from "@/lib/pricing-engine";
 
-export async function createServiceOrderWithPricing(data: any, shopId: string) {
+// ─── Tipos ─────────────────────────────────────────────────────────────────────
+
+interface CustomerInput {
+  name:  string;
+  phone: string;
+}
+
+type PricingMode = "auto" | "manual";
+
+interface CreateOsPayload {
+  customer:          CustomerInput;
+  deviceId:          string;
+  repairTypeId:      string;
+  defectDescription: string;
+  partCost:          number;
+  pricingMode:       PricingMode;
+  /** Preenchido apenas no modo manual */
+  manualPrice:       number | null;
+  /** Valor do desconto em R$ já calculado (validado e reaplicado no servidor) */
+  discountAmount:    number;
+  /** Ignorado internamente — preço é recalculado no servidor */
+  finalPrice?:       number;
+}
+
+// ─── Action principal ──────────────────────────────────────────────────────────
+
+export async function createServiceOrderWithPricing(
+  data:   CreateOsPayload,
+  shopId: string
+) {
   const {
     customer,
     deviceId,
@@ -13,55 +52,82 @@ export async function createServiceOrderWithPricing(data: any, shopId: string) {
     pricingMode,
     manualPrice,
     discountAmount,
-    finalPrice,
   } = data;
 
-  // 1. Valida catálogo
+  // ── Validações de entrada ──────────────────────────────────────────────────
+
+  if (!customer?.name?.trim()) {
+    throw new Error("Nome do cliente é obrigatório.");
+  }
+  if (!customer?.phone?.trim()) {
+    throw new Error("Telefone do cliente é obrigatório.");
+  }
+  if (!deviceId || !repairTypeId) {
+    throw new Error("Aparelho e serviço são obrigatórios.");
+  }
+  if (pricingMode === "manual") {
+    if (!manualPrice || manualPrice <= 0) {
+      throw new Error("Informe um valor válido para o serviço no modo manual.");
+    }
+  }
+
+  const partCostSafe    = Math.max(0, Number(partCost)    || 0);
+  const discountSafe    = Math.max(0, Number(discountAmount) || 0);
+
+  // ── Busca catálogo ─────────────────────────────────────────────────────────
+
   const [modelCatalog, repairCatalog] = await Promise.all([
     prisma.deviceModel.findUnique({ where: { id: deviceId } }),
     prisma.repairType.findUnique({ where: { id: repairTypeId } }),
   ]);
 
-  if (!modelCatalog || !repairCatalog) {
-    throw new Error("Aparelho ou tipo de reparo não encontrado no catálogo.");
+  if (!modelCatalog) {
+    throw new Error("Aparelho não encontrado no catálogo.");
+  }
+  if (!repairCatalog) {
+    throw new Error("Tipo de reparo não encontrado no catálogo.");
   }
 
-  // 2. Mão de obra por dificuldade (preservada intacta)
-  let maoDeObraBase = 100.0;
-  if (repairCatalog.difficulty === "Média")      maoDeObraBase = 160.0;
-  if (repairCatalog.difficulty === "Alta")       maoDeObraBase = 250.0;
-  if (repairCatalog.difficulty === "Muito Alta") maoDeObraBase = 450.0;
+  // ── Recálculo seguro do preço no servidor ──────────────────────────────────
+  // O frontend envia apenas os inputs brutos.
+  // O preço efetivo é sempre calculado aqui, nunca confiado ao cliente.
 
-  // 3. Taxa de risco baseada no valor de mercado (preservada intacta)
-  const deviceValue = Number(modelCatalog.marketValue);
-  const taxaRisco   = deviceValue * (deviceValue > 5000 ? 0.06 : 0.04);
+  let effectivePrice: number;
 
-  // 4. Preço automático (lógica original preservada como fallback)
-  const autoPrice = maoDeObraBase + Number(partCost) + taxaRisco;
+  if (pricingMode === "manual") {
+    // Modo manual: usa o valor informado pelo técnico
+    effectivePrice = Number(manualPrice);
+  } else {
+    // Modo automático: recalcula via engine com os mesmos inputs do frontend
+    const engineResult = calcularPrecoBase({
+      marketValue: Number(modelCatalog.marketValue),
+      difficulty:  repairCatalog.difficulty,
+      partCost:    partCostSafe,
+      // perfil poderia vir da configuração da loja no futuro
+      perfil:      "equilibrado",
+    });
+    effectivePrice = engineResult.subtotal;
+  }
 
-  // 5. Decide qual preço salvar
-  //    "manual" → usa o valor digitado pelo técnico
-  //    "auto"   → usa o finalPrice já calculado pela página (Gemini + desconto)
-  const isManual       = pricingMode === "manual";
-  const effectivePrice = isManual
-    ? Number(manualPrice)
-    : Number(finalPrice ?? autoPrice);
-  const effectiveProfit = effectivePrice - Number(partCost);
+  // Aplica desconto com proteção — desconto nunca pode zerar o preço
+  const discountApplied = Math.min(discountSafe, effectivePrice * 0.50); // máx 50%
+  const finalPrice      = Math.max(0, effectivePrice - discountApplied);
+  const profit          = Math.max(0, finalPrice - partCostSafe);
 
-  // 6. Transação no banco
+  // ── Transação atômica no banco ─────────────────────────────────────────────
+
   return await prisma.$transaction(async (tx) => {
-
-    // Garante que a loja existe
-    const shopExists = await tx.shop.findUnique({ where: { id: shopId } });
-    if (!shopExists) {
-      throw new Error(`Loja "${shopId}" não encontrada. Verifique o login.`);
+    // Valida loja
+    const shop = await tx.shop.findUnique({ where: { id: shopId } });
+    if (!shop) {
+      throw new Error("Loja não encontrada. Faça login novamente.");
     }
 
     // Cria cliente
     const newCustomer = await tx.customer.create({
       data: {
-        name:   String(customer.name),
-        phone:  String(customer.phone),
+        name:   customer.name.trim(),
+        phone:  customer.phone.trim(),
         shopId,
       },
     });
@@ -75,22 +141,31 @@ export async function createServiceOrderWithPricing(data: any, shopId: string) {
       },
     });
 
+    // Monta descrição do defeito
+    const defectText = [
+      repairCatalog.name,
+      defectDescription?.trim() || null,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
     // Cria OS
     const newOs = await tx.serviceOrder.create({
       data: {
         shopId,
-        customerId:   newCustomer.id,
-        deviceId:     newDevice.id,
-        repairTypeId: repairCatalog.id,
-        defect:       repairCatalog.name + (defectDescription ? ` - ${defectDescription}` : ""),
-        notes:        defectDescription ? String(defectDescription) : null,
-        status:       "RECEIVED",
-        servicePrice:  effectivePrice,
-        totalPrice:    effectivePrice,
-        profit:        effectiveProfit,
-        warrantyDays:  shopExists.standardWarranty,
-        pricingMode:   isManual ? "manual" : "auto",
-        manualPrice:   isManual ? Number(manualPrice) : null,
+        customerId:    newCustomer.id,
+        deviceId:      newDevice.id,
+        repairTypeId:  repairCatalog.id,
+        defect:        defectText,
+        notes:         defectDescription?.trim() || null,
+        status:        "RECEIVED",
+        estimatedCost: partCostSafe,
+        servicePrice:  finalPrice,
+        totalPrice:    finalPrice,
+        profit,
+        warrantyDays:  shop.standardWarranty,
+        pricingMode,
+        manualPrice:   pricingMode === "manual" ? Number(manualPrice) : null,
       },
     });
 
