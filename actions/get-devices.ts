@@ -17,48 +17,59 @@ import { prisma } from "@/lib/prisma";
 
 const BRAND_ALIASES: Record<string, string> = {
   // Apple
-  "apple":   "Apple",
-  "iphone":  "Apple",
-  "ios":     "Apple",
-  "mac":     "Apple",
+  apple: "Apple",
+  iphone: "Apple",
+  ios: "Apple",
+  mac: "Apple",
+
   // Samsung
-  "samsung": "Samsung",
-  "galaxy":  "Samsung",
-  "galax":   "Samsung",
+  samsung: "Samsung",
+  galaxy: "Samsung",
+  galax: "Samsung",
+
   // Motorola
-  "moto":    "Motorola",
-  "motorola":"Motorola",
+  moto: "Motorola",
+  motorola: "Motorola",
+
   // Xiaomi
-  "xiaomi":  "Xiaomi",
-  "redmi":   "Xiaomi",
-  "poco":    "Xiaomi",
-  "mi ":     "Xiaomi",
+  xiaomi: "Xiaomi",
+  redmi: "Xiaomi",
+  poco: "Xiaomi",
+  "mi ": "Xiaomi",
+
   // Google
-  "google":  "Google",
-  "pixel":   "Google",
+  google: "Google",
+  pixel: "Google",
+
   // Sony
-  "sony":    "Sony",
-  "xperia":  "Sony",
+  sony: "Sony",
+  xperia: "Sony",
+
   // LG
-  "lg":      "LG",
+  lg: "LG",
+
   // OnePlus
-  "oneplus": "OnePlus",
-  "one plus":"OnePlus",
+  oneplus: "OnePlus",
+  "one plus": "OnePlus",
+
   // Realme
-  "realme":  "Realme",
+  realme: "Realme",
+
   // Asus
-  "asus":    "Asus",
-  "zenfone": "Asus",
+  asus: "Asus",
+  zenfone: "Asus",
+
   // Huawei
-  "huawei":  "Huawei",
-  "honor":   "Honor",
+  huawei: "Huawei",
+  honor: "Honor",
 };
 
 export interface DeviceModelWithMeta {
-  id:          string;
-  brand:       string;
-  model:       string;
+  id: string;
+  brand: string;
+  model: string;
   marketValue: number;
+
   /** Termos de busca normalizados — usados internamente pelo frontend */
   searchTerms: string[];
 }
@@ -69,11 +80,11 @@ export async function getDeviceModels(): Promise<DeviceModelWithMeta[]> {
   });
 
   return devices.map((d) => ({
-    id:          d.id,
-    brand:       d.brand,
-    model:       d.model,
+    id: d.id,
+    brand: d.brand,
+    model: d.model,
     marketValue: Number(d.marketValue),
-    // Pré-computa termos de busca normalizados para o frontend
+
     searchTerms: buildSearchTerms(d.brand, d.model),
   }));
 }
@@ -88,13 +99,24 @@ export async function getRepairTypes() {
 
 /**
  * Gera todos os termos pelos quais um aparelho pode ser encontrado.
- * Exemplo: brand="Apple", model="iPhone 12 Pro"
- * → ["apple iphone 12 pro", "iphone 12 pro", "12 pro", "apple", "iphone"]
+ * Exemplo:
+ * brand="Apple", model="iPhone 12 Pro"
+ *
+ * → [
+ *   "apple iphone 12 pro",
+ *   "iphone 12 pro",
+ *   "12 pro",
+ *   "apple",
+ *   "iphone"
+ * ]
  */
-function buildSearchTerms(brand: string, model: string): string[] {
+function buildSearchTerms(
+  brand: string,
+  model: string
+): string[] {
   const brandNorm = normalize(brand);
   const modelNorm = normalize(model);
-  const full      = `${brandNorm} ${modelNorm}`;
+  const full = `${brandNorm} ${modelNorm}`;
 
   const terms = new Set<string>([
     full,
@@ -103,7 +125,6 @@ function buildSearchTerms(brand: string, model: string): string[] {
   ]);
 
   // Adiciona aliases da marca como termos de busca
-  // Ex: "apple" → também encontra ao digitar "iphone"
   for (const [alias, canonical] of Object.entries(BRAND_ALIASES)) {
     if (normalize(canonical) === brandNorm) {
       terms.add(`${normalize(alias)} ${modelNorm}`);
@@ -111,9 +132,9 @@ function buildSearchTerms(brand: string, model: string): string[] {
     }
   }
 
-  // Adiciona sufixos do modelo para busca parcial
-  // Ex: "iphone 12 pro" → também "12 pro", "pro"
+  // Adiciona partes do modelo para busca parcial
   const modelParts = modelNorm.split(" ");
+
   for (let i = 1; i < modelParts.length; i++) {
     terms.add(modelParts.slice(i).join(" "));
   }
@@ -125,18 +146,19 @@ function normalize(str: string): string {
   return str
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
 
-// ─── Utilitário exportado para o frontend ──────────────────────────────────────
+// ─── Utilitário interno ────────────────────────────────────────────────────────
 
 /**
  * Resolve um termo digitado pelo usuário para o nome oficial da marca.
- * Ex: "iphone" → "Apple", "galaxy" → "Samsung"
- * Retorna null se não houver alias.
+ * Ex:
+ * "iphone" → "Apple"
+ * "galaxy" → "Samsung"
  */
-export function resolveAlias(input: string): string | null {
+function resolveAlias(input: string): string | null {
   const key = input.toLowerCase().trim();
   return BRAND_ALIASES[key] ?? null;
 }
