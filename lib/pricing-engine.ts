@@ -1,5 +1,5 @@
 /**
- * pricing-engine.ts
+ * lib/pricing-engine.ts
  * Motor de Precificação Inteligente — RepairFlow
  *
  * Arquitetura em camadas:
@@ -8,8 +8,15 @@
  *   3. Taxa de risco técnico (responsabilidade operacional)
  *   4. Fator de responsabilidade financeira
  *   5. Proteção de lucratividade (piso e margem mínima)
- *   6. Validação pós-Gemini (sem limites fixos arbitrários)
+ *   6. Validação pós-Gemini — engine é a autoridade, Gemini é o consultor de mercado
  *   7. Ajuste por perfil da assistência (econômico / equilibrado / premium)
+ *
+ * Filosofia da validação pós-Gemini:
+ *   • O Gemini pode AUMENTAR o preço se o mercado justifica
+ *   • O Gemini pode REDUZIR o preço se o valor estiver acima do mercado
+ *   • O Gemini NUNCA perfura o piso técnico calculado pela engine
+ *   • Se o Gemini sugerir abaixo do piso, o piso prevalece integralmente
+ *   • Não existe ponderação com valor baixo do Gemini — ou ele está correto, ou é ignorado
  *
  * 100% dinâmico — funciona para qualquer aparelho ou serviço,
  * presente ou futuro, sem listas fixas de marcas ou modelos.
@@ -51,8 +58,8 @@ export interface PricingEngineOutput {
 
 // ─── Classificação dinâmica por valor de mercado ───────────────────────────────
 // Sem listas fixas. Qualquer aparelho é classificado automaticamente.
-// Novos modelos adicionados no futuro recebem classificação correta sem
-// nenhuma alteração no código.
+// Novos modelos adicionados no futuro recebem classificação correta
+// sem nenhuma alteração no código.
 
 interface CategoriaConfig {
   nome: string;
@@ -67,7 +74,7 @@ interface CategoriaConfig {
 }
 
 function classificarAparelho(marketValue: number): CategoriaConfig {
-  // Ultra Premium (ex: iPhone Pro Max, Galaxy Ultra, Fold, novos flagships)
+  // Ultra Premium (ex: iPhone Pro Max, Galaxy Ultra, Fold, Z Flip top)
   if (marketValue >= 8000) {
     return {
       nome:                  "Ultra Premium",
@@ -128,17 +135,18 @@ function classificarAparelho(marketValue: number): CategoriaConfig {
 }
 
 // ─── Mão de obra base por dificuldade ─────────────────────────────────────────
-// Escalável: qualquer dificuldade futura recebe um default seguro.
+// Valores calibrados para o mercado brasileiro em 2025.
+// Escalável: qualquer dificuldade futura cadastrada recebe um default seguro.
 
 function maoDeObraBase(difficulty: string): number {
   const tabela: Record<string, number> = {
-    "Baixa":      85,
-    "Média":      165,
-    "Alta":       290,
-    "Muito Alta": 490,
+    "Baixa":      95,   // serviços simples: bateria, conector, limpeza
+    "Média":      180,  // telas de intermediários, câmeras, biometria
+    "Alta":       320,  // telas premium, placa, Face ID, oxidação severa
+    "Muito Alta": 520,  // microsolda, reballing, componentes ultra sensíveis
   };
   // Default seguro para dificuldades futuras cadastradas pelo usuário
-  return tabela[difficulty] ?? 130;
+  return tabela[difficulty] ?? 145;
 }
 
 // ─── Perfil da assistência ─────────────────────────────────────────────────────
@@ -147,7 +155,7 @@ function maoDeObraBase(difficulty: string): number {
 
 function multiplicadorPerfil(perfil: PerfilAssistencia): number {
   const perfis: Record<PerfilAssistencia, number> = {
-    economico:    0.90,  // −10% — mais competitivo
+    economico:    0.90,  // −10% — prioriza competitividade
     equilibrado:  1.00,  // neutro — faixa média do mercado
     premium:      1.12,  // +12% — prioriza margem e valor agregado
   };
@@ -188,7 +196,7 @@ export function calcularPrecoBase(input: PricingEngineInput): PricingEngineOutpu
 
   // Piso absoluto de lucratividade
   // Com peça: garante markup mínimo sobre o custo da peça + mão de obra base
-  // Sem peça: garante que o subtotal técnico não seja ignorado
+  // Sem peça: garante que o subtotal técnico nunca seja subvertido
   const pisoAbsoluto = partCost > 0
     ? round2((partCost * (1 + categoria.margemMinimaPct)) + maoDeObra)
     : round2(subtotal * 0.65);
@@ -209,20 +217,26 @@ export function calcularPrecoBase(input: PricingEngineInput): PricingEngineOutpu
 }
 
 // ─── Validação pós-Gemini ──────────────────────────────────────────────────────
-// Segunda camada de inteligência: valida o preço sugerido pelo Gemini
-// contra a realidade técnica e financeira da assistência.
 //
-// Princípios:
-//   • Não usa limites fixos ou percentuais arbitrários
-//   • Não aplica reduções nem aumentos agressivos
-//   • Mantém o preço se ele for correto
-//   • Corrige apenas quando necessário
-//   • Nunca sacrifica a lucratividade mínima
+// Papel do Gemini: consultor de mercado.
+// Papel da engine: guardiã da lucratividade.
+//
+// Regras aplicadas nesta ordem:
+//
+//   1. Calcular o piso técnico inegociável (engine define, Gemini não perfura)
+//   2. Calcular o teto dinâmico (evita valores absurdos)
+//   3. Se Gemini está dentro da faixa saudável → aceita sem alteração
+//   4. Se Gemini está abaixo do piso → ignora Gemini, usa subtotal da engine
+//   5. Se Gemini está acima do piso mas abaixo do subtotal → puxa suavemente para cima
+//   6. Se Gemini está acima do subtotal (mercado justifica) → aceita com suavização leve
+//   7. Se Gemini está acima do teto → limita no teto
+//   8. Aplica perfil da assistência
+//   9. Aplica piso e teto finais como garantia absoluta
 
 export interface ValidacaoInput {
   /** Preço sugerido pelo Gemini */
   precoGemini:  number;
-  /** Base técnica calculada pela engine */
+  /** Subtotal técnico calculado pela engine */
   subtotal:     number;
   /** Custo da peça */
   partCost:     number;
@@ -243,46 +257,76 @@ export function validarPrecoFinal(input: ValidacaoInput): number {
 
   const categoria = classificarAparelho(marketValue);
 
-  // Piso: nunca abaixo do custo total mínimo da operação
+  // ── Piso técnico inegociável ───────────────────────────────────────────────
+  // Representa o mínimo que a operação precisa gerar para ser sustentável.
+  // O Gemini NUNCA pode perfurar esse valor, independente do que sugerir.
   const pisoAbsoluto = partCost > 0
     ? round2((partCost * (1 + categoria.margemMinimaPct)) + maoDeObraBase("Baixa"))
-    : round2(subtotal * 0.60);
+    : round2(subtotal * 0.70);
 
-  // Teto dinâmico: baseado no valor do aparelho e no subtotal técnico
-  // Evita valores absurdos sem usar um cap fixo e arbitrário
-  // Um reparo nunca deve custar mais do que faz sentido para aquele aparelho
+  // ── Teto dinâmico ──────────────────────────────────────────────────────────
+  // Baseado no valor do aparelho — evita orçamentos absurdos.
+  // Um reparo dificilmente deve custar mais que 35% do valor do aparelho,
+  // exceto em casos extremos de microsolda em premium.
   const tetoDinamico = round2(
-    Math.max(subtotal * 2.8, marketValue * 0.30)
+    Math.max(subtotal * 3.0, marketValue * 0.35)
   );
 
-  // Faixa de conforto: entre 85% e 130% do subtotal técnico
-  // Se o Gemini ficar dentro dessa faixa, o preço é mantido sem ajuste
-  const faixaMin = round2(subtotal * 0.85);
-  const faixaMax = round2(subtotal * 1.30);
+  // ── Faixa de equilíbrio ────────────────────────────────────────────────────
+  // Zona onde o preço da engine e o mercado estão alinhados.
+  // Ampliada para dar mais espaço ao mercado premium (era 85%–130%).
+  const faixaMin = round2(subtotal * 0.82);  // 18% abaixo do subtotal técnico
+  const faixaMax = round2(subtotal * 1.55);  // 55% acima (mercado premium justifica)
 
   let precoFinal: number;
 
-  if (precoGemini >= faixaMin && precoGemini <= faixaMax) {
-    // Gemini está dentro da faixa técnica — mantém sem alteração
-    precoFinal = precoGemini;
-  } else if (precoGemini < faixaMin) {
-    // Gemini sugeriu abaixo — puxa suavemente para a faixa mínima
-    // Mas não ignora completamente o Gemini: pondera os dois
-    precoFinal = round2((precoGemini * 0.35) + (faixaMin * 0.65));
-  } else {
-    // Gemini sugeriu acima — aceita se houver justificativa (aparelho premium)
-    // Para Ultra Premium / Premium, o mercado justifica valores maiores
-    const aceitaAcima = categoria.nome === "Ultra Premium" || categoria.nome === "Premium";
-    precoFinal = aceitaAcima
-      ? round2((precoGemini * 0.70) + (faixaMax * 0.30))  // aceita com ponderação
-      : faixaMax;                                           // limita na faixa max
+  // ── Regra 1: Gemini abaixo do piso técnico ────────────────────────────────
+  // O Gemini errou (ou não conhece o contexto real).
+  // Descarta a sugestão integralmente — usa o subtotal técnico como base.
+  // Não existe ponderação: dar qualquer peso a um valor ruim contamina o resultado.
+  if (precoGemini < pisoAbsoluto) {
+    precoFinal = subtotal;
   }
 
-  // Aplica perfil da assistência no resultado final
+  // ── Regra 2: Gemini dentro da faixa de equilíbrio ────────────────────────
+  // Gemini e engine concordam — o preço é válido e representa o mercado.
+  // Mantém sem qualquer alteração.
+  else if (precoGemini >= faixaMin && precoGemini <= faixaMax) {
+    precoFinal = precoGemini;
+  }
+
+  // ── Regra 3: Gemini acima do piso mas abaixo da faixa mínima ─────────────
+  // Gemini está baixo, mas não tecnicamente inviável.
+  // Puxa suavemente para cima, priorizando o subtotal da engine.
+  // O Gemini recebe apenas 20% de influência — suficiente para sinalizar
+  // que o mercado está um pouco abaixo, sem comprometer a margem.
+  else if (precoGemini >= pisoAbsoluto && precoGemini < faixaMin) {
+    precoFinal = round2((precoGemini * 0.20) + (subtotal * 0.80));
+  }
+
+  // ── Regra 4: Gemini acima da faixa máxima ────────────────────────────────
+  // O mercado justifica valores maiores (especialmente em aparelhos premium).
+  // Aceita com suavização: dá peso maior ao Gemini para não desperdiçar
+  // a inteligência de mercado, mas ancora no subtotal técnico.
+  // Para Ultra Premium e Premium: suavização menor (mercado tem mais peso).
+  // Para outros: suavização maior (precaução).
+  else {
+    const isPremium = categoria.nome === "Ultra Premium" || categoria.nome === "Premium";
+    if (isPremium) {
+      // 65% Gemini + 35% faixaMax — aceita com confiança em aparelhos premium
+      precoFinal = round2((precoGemini * 0.65) + (faixaMax * 0.35));
+    } else {
+      // 40% Gemini + 60% faixaMax — mais conservador em aparelhos comuns
+      precoFinal = round2((precoGemini * 0.40) + (faixaMax * 0.60));
+    }
+  }
+
+  // ── Aplica perfil da assistência ──────────────────────────────────────────
   precoFinal = round2(precoFinal * multiplicadorPerfil(perfil));
 
-  // Aplica piso e teto finais
-  precoFinal = Math.min(Math.max(precoFinal, pisoAbsoluto), tetoDinamico);
+  // ── Aplica piso e teto como garantia absoluta final ───────────────────────
+  precoFinal = Math.max(precoFinal, pisoAbsoluto);
+  precoFinal = Math.min(precoFinal, tetoDinamico);
 
   return Math.round(precoFinal);
 }

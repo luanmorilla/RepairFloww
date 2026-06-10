@@ -1,6 +1,6 @@
 "use client";
 import { AssinaturaCard } from "@/components/configuracoes/assinatura-card";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -9,7 +9,8 @@ import {
   ShieldCheck, ImagePlus, Save, Loader2, X, CheckCircle2,
   Smartphone, Search, AlertTriangle, CheckCircle, XCircle,
   Info, ExternalLink, TrendingUp, Zap, ChevronRight,
-  Activity, ArrowUpRight, BarChart2,
+  Activity, ArrowUpRight, BarChart2, Sparkles,
+  Target, Receipt, PercentCircle, ClipboardList,
 } from "lucide-react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,8 @@ import { detectarMarca } from "@/lib/detectarMarca";
 import { ExpiryBanner } from "@/components/expiry-banner";
 
 type Tab = "dashboard" | "os" | "estoque" | "imei" | "configuracoes";
+
+// ─── Estilos globais ───────────────────────────────────────────────────────────
 
 const GLOBAL_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
@@ -53,6 +56,8 @@ const GLOBAL_STYLES = `
     --red-dim:        rgba(224,82,82,0.1);
     --red-border:     rgba(224,82,82,0.2);
     --red-dim-2:      rgba(224,82,82,0.06);
+    --blue:           #4f8ef7;
+    --blue-dim:       rgba(79,142,247,0.10);
 
     --sidebar-w:      220px;
     --radius:         10px;
@@ -111,22 +116,13 @@ const GLOBAL_STYLES = `
   }
 
   .rf-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 9px 16px;
-    background: var(--teal);
-    color: #fff;
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 500;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 7px; padding: 9px 16px;
+    background: var(--teal); color: #fff;
+    font-family: var(--font); font-size: 13px; font-weight: 500;
     border-radius: var(--radius);
     transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
-    border: none;
-    cursor: pointer;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
+    border: none; cursor: pointer; letter-spacing: 0.01em; white-space: nowrap;
   }
   .rf-btn-primary:hover {
     background: var(--teal-light);
@@ -137,56 +133,32 @@ const GLOBAL_STYLES = `
   .rf-btn-primary:disabled { opacity: 0.38; cursor: not-allowed; transform: none; box-shadow: none; }
 
   .rf-btn-ghost {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 14px;
-    background: transparent;
-    color: var(--rf-text-2);
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: var(--radius);
-    border: 0.5px solid var(--rf-border-2);
-    cursor: pointer;
-    transition: all 0.15s;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px; padding: 8px 14px;
+    background: transparent; color: var(--rf-text-2);
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    border-radius: var(--radius); border: 0.5px solid var(--rf-border-2);
+    cursor: pointer; transition: all 0.15s;
   }
   .rf-btn-ghost:hover {
-    background: var(--rf-surface-2);
-    color: var(--rf-text);
-    border-color: var(--rf-border-2);
+    background: var(--rf-surface-2); color: var(--rf-text); border-color: var(--rf-border-2);
   }
 
-  /* ── Config buttons ── */
-
   .rf-btn-save {
-    position: relative;
-    width: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 13px 20px;
-    border-radius: var(--radius);
-    border: none;
-    cursor: pointer;
-    font-family: var(--font);
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: #fff;
+    position: relative; width: 100%;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 13px 20px;
+    border-radius: var(--radius); border: none; cursor: pointer;
+    font-family: var(--font); font-size: 14px; font-weight: 600;
+    letter-spacing: 0.01em; color: #fff;
     background: linear-gradient(135deg, #1a9e78 0%, #22c997 50%, #1a9e78 100%);
-    background-size: 200% 200%;
-    background-position: 0% 50%;
+    background-size: 200% 200%; background-position: 0% 50%;
     box-shadow: 0 2px 0 rgba(0,0,0,0.3), 0 0 0 0.5px rgba(26,158,120,0.4), 0 4px 24px rgba(26,158,120,0.2);
     transition: background-position 0.4s ease, box-shadow 0.2s ease, transform 0.12s ease;
     overflow: hidden;
   }
   .rf-btn-save::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+    content: ''; position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%);
     pointer-events: none;
   }
@@ -195,307 +167,234 @@ const GLOBAL_STYLES = `
     box-shadow: 0 2px 0 rgba(0,0,0,0.3), 0 0 0 0.5px rgba(34,201,151,0.5), 0 8px 32px rgba(26,158,120,0.35);
     transform: translateY(-1px);
   }
-  .rf-btn-save:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(0,0,0,0.3), 0 0 0 0.5px rgba(26,158,120,0.4), 0 2px 8px rgba(26,158,120,0.15); }
+  .rf-btn-save:active { transform: translateY(0); }
   .rf-btn-save:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
 
   .rf-btn-danger {
-    position: relative;
-    width: 100%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 13px 20px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-family: var(--font);
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: #f87171;
-    background: var(--red-dim-2);
-    border: 0.5px solid var(--red-border);
+    position: relative; width: 100%;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 13px 20px;
+    border-radius: var(--radius); cursor: pointer;
+    font-family: var(--font); font-size: 14px; font-weight: 600;
+    letter-spacing: 0.01em; color: #f87171;
+    background: var(--red-dim-2); border: 0.5px solid var(--red-border);
     box-shadow: 0 2px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
-    transition: all 0.18s ease;
-    overflow: hidden;
+    transition: all 0.18s ease; overflow: hidden;
   }
   .rf-btn-danger::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+    content: ''; position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(224,82,82,0.05) 0%, transparent 60%);
     pointer-events: none;
   }
   .rf-btn-danger:hover {
-    background: rgba(224,82,82,0.13);
-    border-color: rgba(224,82,82,0.38);
-    color: #fca5a5;
+    background: rgba(224,82,82,0.13); border-color: rgba(224,82,82,0.38); color: #fca5a5;
     box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 6px 24px rgba(224,82,82,0.18), inset 0 1px 0 rgba(255,255,255,0.04);
     transform: translateY(-1px);
   }
-  .rf-btn-danger:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+  .rf-btn-danger:active { transform: translateY(0); }
 
-  /* warranty chip buttons */
   .rf-warranty-chip {
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    font-family: var(--font);
-    cursor: pointer;
-    transition: all 0.15s ease;
-    letter-spacing: 0.01em;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; font-family: var(--font);
+    cursor: pointer; transition: all 0.15s ease; letter-spacing: 0.01em;
   }
   .rf-warranty-chip.inactive {
-    border: 0.5px solid var(--rf-border);
-    background: var(--rf-surface-2);
-    color: var(--rf-text-3);
+    border: 0.5px solid var(--rf-border); background: var(--rf-surface-2); color: var(--rf-text-3);
   }
   .rf-warranty-chip.inactive:hover {
-    border-color: var(--rf-border-2);
-    color: var(--rf-text-2);
-    background: var(--rf-surface-3);
+    border-color: var(--rf-border-2); color: var(--rf-text-2); background: var(--rf-surface-3);
   }
   .rf-warranty-chip.active {
-    border: 0.5px solid var(--teal-border);
-    background: var(--teal-dim);
-    color: var(--teal-light);
+    border: 0.5px solid var(--teal-border); background: var(--teal-dim); color: var(--teal-light);
     box-shadow: 0 0 0 1px rgba(26,158,120,0.08), 0 2px 8px rgba(26,158,120,0.12);
   }
 
-  /* mobile overrides */
   @media (max-width: 768px) {
-    .rf-btn-save,
-    .rf-btn-danger {
-      padding: 15px 20px;
-      font-size: 15px;
-      border-radius: 12px;
-    }
-    .rf-warranty-chip {
-      padding: 10px 16px;
-      font-size: 13.5px;
-    }
+    .rf-btn-save, .rf-btn-danger { padding: 15px 20px; font-size: 15px; border-radius: 12px; }
+    .rf-warranty-chip { padding: 10px 16px; font-size: 13.5px; }
   }
 
   .rf-nav-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 8px 10px;
-    border-radius: var(--radius);
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--rf-text-3);
-    border: 0.5px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: left;
-    background: none;
-    letter-spacing: 0.01em;
+    width: 100%; display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 400; color: var(--rf-text-3);
+    border: 0.5px solid transparent; cursor: pointer; transition: all 0.15s;
+    text-align: left; background: none; letter-spacing: 0.01em;
   }
-  .rf-nav-item:hover {
-    color: var(--rf-text-2);
-    background: var(--rf-surface-2);
-  }
-  .rf-nav-item.active {
-    color: var(--rf-text);
-    background: var(--rf-surface-3);
-    border-color: var(--rf-border-2);
-  }
+  .rf-nav-item:hover { color: var(--rf-text-2); background: var(--rf-surface-2); }
+  .rf-nav-item.active { color: var(--rf-text); background: var(--rf-surface-3); border-color: var(--rf-border-2); }
   .rf-nav-item .nav-dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: var(--teal);
-    margin-left: auto;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--teal); margin-left: auto;
     box-shadow: 0 0 6px var(--teal);
   }
 
   .rf-badge {
-    display: inline-flex;
-    align-items: center;
-    font-size: 10.5px;
-    font-weight: 500;
-    padding: 2px 7px;
-    border-radius: 20px;
-    letter-spacing: 0.02em;
+    display: inline-flex; align-items: center;
+    font-size: 10.5px; font-weight: 500;
+    padding: 2px 7px; border-radius: 20px; letter-spacing: 0.02em;
   }
-  .rf-badge-teal { background: var(--teal-dim); color: var(--teal-light); border: 0.5px solid var(--teal-border); }
-  .rf-badge-amber { background: var(--amber-dim); color: var(--amber); border: 0.5px solid rgba(232,164,48,0.2); }
-  .rf-badge-violet { background: var(--violet-dim); color: var(--violet); border: 0.5px solid rgba(139,124,248,0.2); }
-  .rf-badge-red { background: var(--red-dim); color: var(--red); border: 0.5px solid var(--red-border); }
+  .rf-badge-teal   { background: var(--teal-dim);   color: var(--teal-light); border: 0.5px solid var(--teal-border); }
+  .rf-badge-amber  { background: var(--amber-dim);  color: var(--amber);      border: 0.5px solid rgba(232,164,48,0.2); }
+  .rf-badge-violet { background: var(--violet-dim); color: var(--violet);     border: 0.5px solid rgba(139,124,248,0.2); }
+  .rf-badge-red    { background: var(--red-dim);    color: var(--red);        border: 0.5px solid var(--red-border); }
 
   .rf-logo-mark {
-    width: 26px; height: 26px;
-    background: var(--teal);
-    border-radius: 7px;
+    width: 26px; height: 26px; background: var(--teal); border-radius: 7px;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 12px rgba(26,158,120,0.35);
-    flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(26,158,120,0.35); flex-shrink: 0;
   }
   .rf-logo-mark svg { width: 14px; height: 14px; }
 
   .rf-divider { height: 0.5px; background: var(--rf-border); width: 100%; }
 
+  /* ── Metric card ── */
   .rf-metric {
     background: var(--rf-surface);
     border: 0.5px solid var(--rf-border);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    cursor: default;
+    padding: 20px; position: relative; overflow: hidden;
     transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
   }
+  .rf-metric.clickable { cursor: pointer; }
   .rf-metric:hover {
     border-color: var(--rf-border-2);
     transform: translateY(-1px);
     box-shadow: 0 8px 30px rgba(0,0,0,0.25);
   }
-  .rf-metric.clickable { cursor: pointer; }
   .rf-metric::before {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 120px; height: 120px;
-    border-radius: 50%;
-    opacity: 0.04;
-    pointer-events: none;
+    content: ''; position: absolute; top: -20px; right: -20px;
+    width: 100px; height: 100px; border-radius: 50%; opacity: 0.035; pointer-events: none;
   }
-  .rf-metric-teal::before { background: var(--teal); }
+  .rf-metric-teal::before   { background: var(--teal); }
   .rf-metric-violet::before { background: var(--violet); }
-  .rf-metric-amber::before { background: var(--amber); }
+  .rf-metric-amber::before  { background: var(--amber); }
+  .rf-metric-red::before    { background: var(--red); }
 
-  .rf-shortcut {
+  /* ── Secondary metric ── */
+  .rf-sec-metric {
     background: var(--rf-surface);
     border: 0.5px solid var(--rf-border);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.18s;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s;
   }
-  .rf-shortcut:hover {
-    background: var(--rf-surface-2);
+  .rf-sec-metric:hover {
     border-color: var(--rf-border-2);
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
   }
 
+  /* ── Activity item ── */
+  .rf-activity-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    transition: background 0.15s;
+  }
+  .rf-activity-item:hover { background: var(--rf-surface-2); }
+
   .rf-icon-box {
-    width: 34px; height: 34px;
-    border-radius: 9px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .rf-icon-box-sm {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  .rf-shortcut {
+    background: var(--rf-surface); border: 0.5px solid var(--rf-border);
+    border-radius: var(--radius-lg); padding: 20px; cursor: pointer;
+    transition: all 0.18s; display: flex; flex-direction: column; gap: 12px;
+  }
+  .rf-shortcut:hover {
+    background: var(--rf-surface-2); border-color: var(--rf-border-2);
+    transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3);
   }
 
   @keyframes rf-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
   .rf-pulse { animation: rf-pulse 1.5s ease-in-out infinite; }
 
   .rf-link-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 13px;
-    background: var(--rf-surface-2);
-    border: 0.5px solid var(--rf-border);
-    border-radius: var(--radius);
-    transition: all 0.15s;
-    text-decoration: none;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 13px; background: var(--rf-surface-2);
+    border: 0.5px solid var(--rf-border); border-radius: var(--radius);
+    transition: all 0.15s; text-decoration: none;
   }
-  .rf-link-item:hover {
-    background: var(--rf-surface-3);
-    border-color: var(--rf-border-2);
-  }
+  .rf-link-item:hover { background: var(--rf-surface-3); border-color: var(--rf-border-2); }
 
   .rf-bottom-nav {
     background: rgba(9,9,12,0.96);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
     border-top: 0.5px solid rgba(255,255,255,0.07);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-
   .rf-bottom-nav-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 4px 11px;
-    gap: 5px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    transition: color 0.18s ease;
-    -webkit-tap-highlight-color: transparent;
-    min-height: 60px;
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 10px 4px 11px; gap: 5px;
+    background: none; border: none; cursor: pointer;
+    position: relative; transition: color 0.18s ease;
+    -webkit-tap-highlight-color: transparent; min-height: 60px;
   }
-
-  .rf-bottom-nav-btn .nav-icon {
-    transition: transform 0.18s ease, color 0.18s ease;
-  }
-  .rf-bottom-nav-btn.active .nav-icon {
-    transform: translateY(-1px);
-  }
-
+  .rf-bottom-nav-btn .nav-icon { transition: transform 0.18s ease, color 0.18s ease; }
+  .rf-bottom-nav-btn.active .nav-icon { transform: translateY(-1px); }
   .rf-bottom-nav-btn .nav-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    transition: color 0.18s ease, opacity 0.18s ease;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; transition: color 0.18s ease, opacity 0.18s ease;
     font-family: var(--font);
   }
-
-  .rf-bottom-nav-btn.inactive {
-    color: rgba(240,240,244,0.28);
-  }
-  .rf-bottom-nav-btn.inactive:active {
-    color: rgba(240,240,244,0.5);
-  }
-
-  .rf-bottom-nav-btn.active {
-    color: var(--teal-light);
-  }
-
+  .rf-bottom-nav-btn.inactive { color: rgba(240,240,244,0.28); }
+  .rf-bottom-nav-btn.inactive:active { color: rgba(240,240,244,0.5); }
+  .rf-bottom-nav-btn.active { color: var(--teal-light); }
   .rf-nav-indicator {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 28px;
-    height: 2.5px;
-    background: var(--teal-light);
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 28px; height: 2.5px; background: var(--teal-light);
     border-radius: 0 0 3px 3px;
     box-shadow: 0 0 10px rgba(34,201,151,0.6), 0 0 20px rgba(34,201,151,0.2);
   }
-
   .rf-nav-icon-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 30px;
-    border-radius: 10px;
-    transition: background 0.18s ease;
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 42px; height: 30px; border-radius: 10px; transition: background 0.18s ease;
   }
-  .rf-bottom-nav-btn.active .rf-nav-icon-wrap {
-    background: rgba(26,158,120,0.12);
-  }
+  .rf-bottom-nav-btn.active .rf-nav-icon-wrap { background: rgba(26,158,120,0.12); }
 
-  @keyframes rf-fade-up {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes rf-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .rf-anim { animation: rf-fade-up 0.2s ease forwards; }
 
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Empty state ── */
+  .rf-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 52px 24px; gap: 16px;
+  }
+  .rf-empty-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--teal-dim); border: 0.5px solid var(--teal-border);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 4px;
+  }
+
+  /* ── Welcome banner ── */
+  .rf-welcome {
+    background: linear-gradient(135deg, var(--rf-surface) 0%, rgba(26,158,120,0.06) 100%);
+    border: 0.5px solid var(--teal-border);
+    border-radius: var(--radius-xl);
+    padding: 24px 28px;
+    position: relative; overflow: hidden;
+  }
+  .rf-welcome::before {
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(34,201,151,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
 `;
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function LogoIcon() {
   return (
@@ -505,6 +404,396 @@ function LogoIcon() {
     </svg>
   );
 }
+
+function saudacao(nome: string): string {
+  const h = new Date().getHours();
+  const periodo = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  const emoji = h < 12 ? "☀️" : h < 18 ? "👋" : "🌙";
+  const primeiroNome = nome?.split(" ")[0] ?? "";
+  return primeiroNome ? `${periodo}, ${primeiroNome} ${emoji}` : `${periodo} ${emoji}`;
+}
+
+function resumoOperacao(emReparo: number, prontas: number): string {
+  if (emReparo === 0 && prontas === 0) return "Nenhuma ordem ativa no momento.";
+  const partes: string[] = [];
+  if (emReparo > 0) partes.push(`${emReparo} em reparo`);
+  if (prontas > 0) partes.push(`${prontas} pronta${prontas > 1 ? "s" : ""} para entrega`);
+  return partes.join(" · ");
+}
+
+function formatCurrency(value: number): string {
+  if (value >= 1000) {
+    return `R$ ${(value / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k`;
+  }
+  return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// ─── DashboardTab — componente isolado ────────────────────────────────────────
+
+interface DashboardStats {
+  total: number;
+  emReparo: number;
+  prontas: number;
+  atrasadas: number;
+  faturamento: number;
+}
+
+function DashboardTab({
+  stats,
+  shopId,
+  nomeUsuario,
+  onNovaOS,
+  onFaturamentoClick,
+}: {
+  stats: DashboardStats;
+  shopId: string;
+  nomeUsuario: string;
+  onNovaOS: () => void;
+  onFaturamentoClick: () => void;
+}) {
+  const router = useRouter();
+  const hasData = stats.total > 0;
+
+  // Métricas derivadas — estrutura preparada para dados reais futuros
+  const ticketMedio = stats.faturamento > 0 && stats.total > 0
+    ? stats.faturamento / stats.total
+    : 0;
+
+  const taxaConclusao = stats.total > 0
+    ? Math.round(((stats.total - stats.emReparo) / stats.total) * 100)
+    : 0;
+
+  // Dados simulados para atividade recente — estrutura pronta para API real
+  // Quando a API existir, substituir este array pelo fetch real
+  const atividadesRecentes: Array<{
+    nome: string;
+    servico: string;
+    tempo: string;
+    status: "reparo" | "pronta" | "entregue";
+  }> = [];
+
+  // ── Cards principais ──────────────────────────────────────────────────────
+
+  const mainCards = [
+    {
+      label: "Total de OS",
+      value: stats.total.toString(),
+      sub: stats.total === 1 ? "ordem cadastrada" : "ordens cadastradas",
+      icon: ClipboardList,
+      colorClass: "rf-metric-teal",
+      iconBg: "var(--teal-dim)",
+      iconColor: "var(--teal-light)",
+      valueColor: "var(--rf-text)",
+      badge: null as string | null,
+      onClick: undefined as (() => void) | undefined,
+    },
+    {
+      label: "Em Reparo",
+      value: stats.emReparo.toString(),
+      sub: stats.emReparo === 1 ? "em andamento agora" : "em andamento agora",
+      icon: Activity,
+      colorClass: "rf-metric-violet",
+      iconBg: "var(--violet-dim)",
+      iconColor: "var(--violet)",
+      valueColor: "var(--rf-text)",
+      badge: stats.atrasadas > 0 ? `${stats.atrasadas} atrasada${stats.atrasadas > 1 ? "s" : ""}` : null,
+      onClick: undefined,
+    },
+    {
+      label: "Prontas",
+      value: stats.prontas.toString(),
+      sub: stats.prontas === 1 ? "aguardando retirada" : "aguardando retirada",
+      icon: CheckCircle2,
+      colorClass: "rf-metric-amber",
+      iconBg: "var(--amber-dim)",
+      iconColor: "var(--amber)",
+      valueColor: stats.prontas > 0 ? "var(--amber)" : "var(--rf-text)",
+      badge: null,
+      onClick: undefined,
+    },
+    {
+      label: "Faturamento",
+      value: formatCurrency(stats.faturamento),
+      sub: "receita total acumulada",
+      icon: TrendingUp,
+      colorClass: "rf-metric-teal",
+      iconBg: "var(--teal-dim)",
+      iconColor: "var(--teal-light)",
+      valueColor: "var(--teal-light)",
+      badge: null,
+      onClick: onFaturamentoClick,
+    },
+  ];
+
+  // ── Métricas secundárias ──────────────────────────────────────────────────
+
+  const secMetrics = [
+    {
+      label: "Ticket Médio",
+      value: ticketMedio > 0 ? formatCurrency(ticketMedio) : "—",
+      icon: Receipt,
+      iconBg: "var(--blue-dim)",
+      iconColor: "var(--blue)",
+    },
+    {
+      label: "Taxa de Conclusão",
+      value: stats.total > 0 ? `${taxaConclusao}%` : "—",
+      icon: PercentCircle,
+      iconBg: "var(--teal-dim)",
+      iconColor: "var(--teal-light)",
+    },
+    {
+      label: "OS do Mês",
+      value: "—",
+      icon: Target,
+      iconBg: "var(--violet-dim)",
+      iconColor: "var(--violet)",
+    },
+    {
+      label: "Lucro Estimado",
+      value: "—",
+      icon: Sparkles,
+      iconBg: "var(--amber-dim)",
+      iconColor: "var(--amber)",
+    },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Saudação ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22 }}
+        className="rf-welcome"
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--rf-text)", marginBottom: 6 }}>
+              {saudacao(nomeUsuario)}
+            </h2>
+            <p style={{ fontSize: 13.5, color: "var(--rf-text-2)", lineHeight: 1.5 }}>
+              {resumoOperacao(stats.emReparo, stats.prontas)}
+            </p>
+          </div>
+          <button onClick={onNovaOS} className="rf-btn-primary" style={{ flexShrink: 0 }}>
+            <Plus size={14} /> Nova OS
+          </button>
+        </div>
+      </motion.div>
+
+      {/* ── Cards principais ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }} className="sm:grid-cols-4">
+        {mainCards.map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.055, duration: 0.2 }}
+            onClick={card.onClick}
+            className={`rf-metric ${card.colorClass} ${card.onClick ? "clickable" : ""}`}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+              <div className="rf-icon-box" style={{ background: card.iconBg }}>
+                <card.icon size={15} style={{ color: card.iconColor }} />
+              </div>
+              {card.badge && (
+                <span className="rf-badge rf-badge-amber">{card.badge}</span>
+              )}
+              {card.onClick && !card.badge && (
+                <ArrowUpRight size={13} style={{ color: "var(--rf-text-3)" }} />
+              )}
+            </div>
+            <p style={{ fontSize: 26, fontWeight: 500, color: card.valueColor, letterSpacing: "-0.025em", marginBottom: 4, lineHeight: 1 }}>
+              {card.value}
+            </p>
+            <p style={{ fontSize: 11, color: "var(--rf-text-3)", fontWeight: 400 }}>{card.sub}</p>
+            <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 10 }}>
+              {card.label}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── Estado vazio ── */}
+      {!hasData && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="rf-card"
+        >
+          <div className="rf-empty">
+            <div className="rf-empty-icon">
+              <Wrench size={22} style={{ color: "var(--teal-light)" }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+              <p style={{ fontSize: 15, fontWeight: 500, color: "var(--rf-text)" }}>
+                Bem-vindo ao RepairFlow
+              </p>
+              <p style={{ fontSize: 13, color: "var(--rf-text-3)", lineHeight: 1.6, maxWidth: 300 }}>
+                Crie sua primeira Ordem de Serviço para começar a gerenciar os reparos da sua assistência.
+              </p>
+            </div>
+            <button onClick={onNovaOS} className="rf-btn-primary" style={{ marginTop: 4 }}>
+              <Plus size={14} /> Criar primeira OS
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Métricas secundárias ── */}
+      {hasData && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18, duration: 0.2 }}
+        >
+          <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            Indicadores
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+            {secMetrics.map((m, i) => (
+              <motion.div
+                key={m.label}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.20 + i * 0.04 }}
+                className="rf-sec-metric"
+              >
+                <div className="rf-icon-box-sm" style={{ background: m.iconBg }}>
+                  <m.icon size={13} style={{ color: m.iconColor }} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 16, fontWeight: 500, color: "var(--rf-text)", letterSpacing: "-0.015em", lineHeight: 1.2 }}>
+                    {m.value}
+                  </p>
+                  <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", marginTop: 3, fontWeight: 400 }}>{m.label}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Atividade recente ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28, duration: 0.2 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Atividade Recente
+          </p>
+          {atividadesRecentes.length > 0 && (
+            <button
+              onClick={() => {/* navegar para OS */}}
+              style={{ fontSize: 11, color: "var(--teal-light)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+            >
+              Ver todas <ChevronRight size={11} />
+            </button>
+          )}
+        </div>
+
+        <div className="rf-card" style={{ overflow: "hidden" }}>
+          {atividadesRecentes.length === 0 ? (
+            <div style={{ padding: "24px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--rf-surface-2)", border: "0.5px solid var(--rf-border-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Clock size={16} style={{ color: "var(--rf-text-3)" }} />
+              </div>
+              <p style={{ fontSize: 13, color: "var(--rf-text-3)", textAlign: "center" }}>
+                {hasData
+                  ? "As últimas movimentações aparecerão aqui."
+                  : "Nenhuma atividade ainda."}
+              </p>
+            </div>
+          ) : (
+            <div>
+              {atividadesRecentes.map((item, i) => (
+                <div
+                  key={i}
+                  className="rf-activity-item"
+                  style={{ borderBottom: i < atividadesRecentes.length - 1 ? "0.5px solid var(--rf-border)" : "none" }}
+                >
+                  <div className="rf-icon-box-sm" style={{ background: "var(--teal-dim)" }}>
+                    <Wrench size={12} style={{ color: "var(--teal-light)" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "var(--rf-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.nome}</p>
+                    <p style={{ fontSize: 11.5, color: "var(--rf-text-3)", marginTop: 1 }}>{item.servico}</p>
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--rf-text-3)", flexShrink: 0 }}>{item.tempo}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* ── Atalhos rápidos (quando há dados) ── */}
+      {hasData && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.33, duration: 0.2 }}
+        >
+          <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            Acesso Rápido
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            {[
+              {
+                icon: Wrench,
+                label: "Ordens de Serviço",
+                desc: "Gerencie e acompanhe reparos",
+                accentColor: "var(--teal-light)",
+                accentBg: "var(--teal-dim)",
+                borderHover: "var(--teal-border)",
+                onClick: () => router.push("/painel/nova-os"),
+                cta: "Nova OS",
+              },
+              {
+                icon: Package,
+                label: "Estoque",
+                desc: "Produtos, capinhas e acessórios",
+                accentColor: "var(--violet)",
+                accentBg: "var(--violet-dim)",
+                borderHover: "rgba(139,124,248,0.2)",
+                onClick: undefined,
+                cta: "Ver estoque",
+              },
+            ].map(({ icon: Icon, label, desc, accentColor, accentBg, borderHover, onClick, cta }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                className="rf-shortcut"
+                style={{ textAlign: "left", border: "0.5px solid var(--rf-border)" }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = borderHover)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--rf-border)")}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div className="rf-icon-box" style={{ background: accentBg }}>
+                    <Icon size={15} style={{ color: accentColor }} />
+                  </div>
+                  <ChevronRight size={14} style={{ color: "var(--rf-text-3)" }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "var(--rf-text)" }}>{label}</p>
+                  <p style={{ fontSize: 12, color: "var(--rf-text-3)", marginTop: 3 }}>{desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+    </div>
+  );
+}
+
+// ─── ConfiguracoesTab ─────────────────────────────────────────────────────────
 
 function ConfiguracoesTab() {
   const [loading, setLoading] = useState(true);
@@ -570,8 +859,6 @@ function ConfiguracoesTab() {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-
-      {/* Card principal — Dados da Assistência */}
       <div className="rf-card" style={{ padding: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
           <div className="rf-icon-box" style={{ background: "var(--teal-dim)" }}>
@@ -585,15 +872,12 @@ function ConfiguracoesTab() {
 
         <div className="rf-divider" style={{ marginBottom: 24 }} />
 
-        {/* Logo upload */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 28 }}>
           <div
             onClick={() => fileInputRef.current?.click()}
             style={{
-              position: "relative", width: 88, height: 88,
-              borderRadius: 18, overflow: "hidden",
-              background: "var(--rf-surface-2)",
-              border: "0.5px dashed var(--rf-border-2)",
+              position: "relative", width: 88, height: 88, borderRadius: 18, overflow: "hidden",
+              background: "var(--rf-surface-2)", border: "0.5px dashed var(--rf-border-2)",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: "pointer", transition: "border-color 0.15s",
             }}
@@ -603,11 +887,8 @@ function ConfiguracoesTab() {
             {logoPreview ? (
               <>
                 <Image src={logoPreview} alt="Logo" fill style={{ objectFit: "contain", padding: 8 }} />
-                <div style={{
-                  position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)",
-                  opacity: 0, transition: "opacity 0.15s",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
+                <div
+                  style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", opacity: 0, transition: "opacity 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
                   onMouseLeave={e => (e.currentTarget.style.opacity = "0")}
                 >
@@ -615,13 +896,7 @@ function ConfiguracoesTab() {
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemoveLogo(); }}
-                  style={{
-                    position: "absolute", top: 6, right: 6,
-                    width: 18, height: 18, borderRadius: "50%",
-                    background: "var(--red)", border: "none",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", zIndex: 10,
-                  }}
+                  style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: "50%", background: "var(--red)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 10 }}
                 >
                   <X size={10} color="#fff" />
                 </button>
@@ -637,99 +912,62 @@ function ConfiguracoesTab() {
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoChange} />
         </div>
 
-        {/* Fields */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {[
             { label: "Nome da Loja", icon: Store, value: name, onChange: setName, placeholder: "Ex: TechFix Assistência" },
             { label: "WhatsApp", icon: Phone, value: phone, onChange: setPhone, placeholder: "(11) 99999-9999" },
           ].map(({ label, icon: Icon, value, onChange, placeholder }) => (
             <div key={label}>
-              <label style={{
-                fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500,
-                textTransform: "uppercase", letterSpacing: "0.07em",
-                display: "flex", alignItems: "center", gap: 5, marginBottom: 6,
-              }}>
+              <label style={{ fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
                 <Icon size={11} /> {label}
               </label>
               <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="rf-input" />
             </div>
           ))}
 
-          {/* Garantia */}
           <div>
-            <label style={{
-              fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500,
-              textTransform: "uppercase", letterSpacing: "0.07em",
-              display: "flex", alignItems: "center", gap: 5, marginBottom: 8,
-            }}>
+            <label style={{ fontSize: 11, color: "var(--rf-text-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
               <ShieldCheck size={11} /> Garantia Padrão
             </label>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  type="number" min={1} max={730} value={warranty}
-                  onChange={(e) => setWarranty(Number(e.target.value))}
-                  className="rf-input" style={{ width: 72, textAlign: "center" }}
-                />
+                <input type="number" min={1} max={730} value={warranty} onChange={(e) => setWarranty(Number(e.target.value))} className="rf-input" style={{ width: 72, textAlign: "center" }} />
                 <span style={{ fontSize: 12, color: "var(--rf-text-3)" }}>dias</span>
               </div>
               <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap" }}>
                 {warrantyOptions.map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setWarranty(d)}
-                    className={`rf-warranty-chip ${warranty === d ? "active" : "inactive"}`}
-                  >
-                    {d}d
-                  </button>
+                  <button key={d} onClick={() => setWarranty(d)} className={`rf-warranty-chip ${warranty === d ? "active" : "inactive"}`}>{d}d</button>
                 ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Feedback */}
         {error && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "11px 13px", marginTop: 16,
-            background: "var(--red-dim)", border: "0.5px solid var(--red-border)",
-            borderRadius: "var(--radius)",
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", marginTop: 16, background: "var(--red-dim)", border: "0.5px solid var(--red-border)", borderRadius: "var(--radius)" }}>
             <XCircle size={15} style={{ color: "var(--red)", flexShrink: 0 }} />
             <p style={{ fontSize: 13, color: "var(--red)" }}>{error}</p>
           </div>
         )}
         {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "11px 13px", marginTop: 16,
-              background: "var(--teal-dim)", border: "0.5px solid var(--teal-border)",
-              borderRadius: "var(--radius)",
-            }}
+          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", marginTop: 16, background: "var(--teal-dim)", border: "0.5px solid var(--teal-border)", borderRadius: "var(--radius)" }}
           >
             <CheckCircle2 size={15} style={{ color: "var(--teal-light)", flexShrink: 0 }} />
             <p style={{ fontSize: 13, color: "var(--teal-light)" }}>Configurações salvas com sucesso!</p>
           </motion.div>
         )}
 
-        {/* ── Salvar ── */}
         <div style={{ marginTop: 20 }}>
           <button onClick={handleSave} disabled={saving} className="rf-btn-save">
-            {saving
-              ? <Loader2 size={16} style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
-              : <Save size={16} style={{ flexShrink: 0 }} />}
+            {saving ? <Loader2 size={16} style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }} /> : <Save size={16} style={{ flexShrink: 0 }} />}
             {saving ? "Salvando..." : "Salvar Configurações"}
           </button>
         </div>
       </div>
 
-      {/* ── Assinatura ── */}
       <AssinaturaCard />
 
-      {/* ── Conta / Sair ── */}
       <div className="rf-card" style={{ padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div className="rf-icon-box" style={{ background: "var(--red-dim)" }}>
@@ -740,19 +978,15 @@ function ConfiguracoesTab() {
             <p style={{ fontSize: 11.5, color: "var(--rf-text-3)", marginTop: 1 }}>Encerrar sessão do painel</p>
           </div>
         </div>
-
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="rf-btn-danger"
-        >
-          <LogOut size={16} style={{ flexShrink: 0 }} />
-          Sair da conta
+        <button onClick={() => signOut({ callbackUrl: "/login" })} className="rf-btn-danger">
+          <LogOut size={16} style={{ flexShrink: 0 }} /> Sair da conta
         </button>
       </div>
-
     </div>
   );
 }
+
+// ─── ImeiTab ──────────────────────────────────────────────────────────────────
 
 function ImeiTab() {
   const [imei, setImei] = useState("");
@@ -817,12 +1051,7 @@ function ImeiTab() {
             className="rf-input"
             style={{ fontFamily: "var(--mono)", letterSpacing: "0.18em", fontSize: 15, flex: 1 }}
           />
-          <button
-            onClick={consultar}
-            disabled={loading || imeiLimpo.length < 15}
-            className="rf-btn-primary"
-            style={{ padding: "9px 16px", flexShrink: 0 }}
-          >
+          <button onClick={consultar} disabled={loading || imeiLimpo.length < 15} className="rf-btn-primary" style={{ padding: "9px 16px", flexShrink: 0 }}>
             {loading ? <Loader2 size={15} style={{ animation: "spin 0.8s linear infinite" }} /> : <Search size={15} />}
           </button>
         </div>
@@ -833,24 +1062,14 @@ function ImeiTab() {
           </p>
           <div style={{ display: "flex", gap: 3 }}>
             {Array.from({ length: 15 }).map((_, i) => (
-              <div key={i} style={{
-                width: 5, height: 5, borderRadius: "50%",
-                background: i < imeiLimpo.length ? "var(--teal)" : "var(--rf-surface-3)",
-                transition: "background 0.1s",
-                boxShadow: i < imeiLimpo.length ? "0 0 4px var(--teal)" : "none",
-              }} />
+              <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: i < imeiLimpo.length ? "var(--teal)" : "var(--rf-surface-3)", transition: "background 0.1s", boxShadow: i < imeiLimpo.length ? "0 0 4px var(--teal)" : "none" }} />
             ))}
           </div>
         </div>
 
         {erro && (
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            style={{
-              display: "flex", alignItems: "flex-start", gap: 10,
-              padding: "11px 13px", marginBottom: 12,
-              background: "var(--red-dim)", border: "0.5px solid var(--red-border)",
-              borderRadius: "var(--radius)",
-            }}
+            style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "11px 13px", marginBottom: 12, background: "var(--red-dim)", border: "0.5px solid var(--red-border)", borderRadius: "var(--radius)" }}
           >
             <XCircle size={14} style={{ color: "var(--red)", flexShrink: 0, marginTop: 1 }} />
             <p style={{ fontSize: 13, color: "var(--red)" }}>{erro}</p>
@@ -859,18 +1078,8 @@ function ImeiTab() {
 
         {resultado && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 12,
-              padding: "13px 15px",
-              background: "var(--teal-dim-2)",
-              border: "0.5px solid var(--teal-border)",
-              borderRadius: "var(--radius)",
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: "var(--teal-dim)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 15px", background: "var(--teal-dim-2)", border: "0.5px solid var(--teal-border)", borderRadius: "var(--radius)" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--teal-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <CheckCircle size={16} style={{ color: "var(--teal-light)" }} />
               </div>
               <div>
@@ -878,7 +1087,6 @@ function ImeiTab() {
                 <p style={{ fontSize: 11, color: "var(--rf-text-3)", fontFamily: "var(--mono)", letterSpacing: "0.15em", marginTop: 2 }}>{resultado.imei}</p>
               </div>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {[
                 { label: "Fabricante", value: resultado.marca },
@@ -890,13 +1098,7 @@ function ImeiTab() {
                 </div>
               ))}
             </div>
-
-            <div style={{
-              display: "flex", alignItems: "flex-start", gap: 10,
-              padding: "11px 13px",
-              background: "var(--rf-surface-2)", border: "0.5px solid var(--rf-border)",
-              borderRadius: "var(--radius)",
-            }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "11px 13px", background: "var(--rf-surface-2)", border: "0.5px solid var(--rf-border)", borderRadius: "var(--radius)" }}>
               <Info size={13} style={{ color: "var(--rf-text-3)", flexShrink: 0, marginTop: 1 }} />
               <p style={{ fontSize: 12, color: "var(--rf-text-3)", lineHeight: 1.5 }}>{resultado.info}</p>
             </div>
@@ -916,16 +1118,11 @@ function ImeiTab() {
             </p>
           </div>
         </div>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {linksConsulta.map((link) => (
             <a key={link.nome} href={link.url} target="_blank" rel="noopener noreferrer" className="rf-link-item">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{
-                  fontSize: 9, fontWeight: 600, fontFamily: "var(--mono)",
-                  color: "var(--rf-text-3)", background: "var(--rf-surface-3)",
-                  padding: "2px 6px", borderRadius: 4, letterSpacing: "0.05em",
-                }}>{link.badge}</span>
+                <span style={{ fontSize: 9, fontWeight: 600, fontFamily: "var(--mono)", color: "var(--rf-text-3)", background: "var(--rf-surface-3)", padding: "2px 6px", borderRadius: 4, letterSpacing: "0.05em" }}>{link.badge}</span>
                 <div>
                   <p style={{ fontSize: 13, color: "var(--rf-text-2)", fontWeight: 500 }}>{link.nome}</p>
                   <p style={{ fontSize: 11, color: "var(--rf-text-3)", marginTop: 1 }}>{link.descricao}</p>
@@ -935,13 +1132,7 @@ function ImeiTab() {
             </a>
           ))}
         </div>
-
-        <div style={{
-          display: "flex", alignItems: "flex-start", gap: 8,
-          padding: "10px 12px", marginTop: 14,
-          background: "var(--amber-dim)", border: "0.5px solid rgba(232,164,48,0.15)",
-          borderRadius: "var(--radius)",
-        }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", marginTop: 14, background: "var(--amber-dim)", border: "0.5px solid rgba(232,164,48,0.15)", borderRadius: "var(--radius)" }}>
           <AlertTriangle size={12} style={{ color: "var(--amber)", flexShrink: 0, marginTop: 1 }} />
           <p style={{ fontSize: 11, color: "var(--rf-text-3)", lineHeight: 1.5 }}>
             Consulta oficial de bloqueio é feita pelas operadoras e Anatel. Serviços de terceiros podem cobrar por consultas completas.
@@ -952,17 +1143,24 @@ function ImeiTab() {
   );
 }
 
+// ─── DashboardPage — principal ─────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [stats, setStats] = useState({ total: 0, emReparo: 0, prontas: 0, atrasadas: 0, faturamento: 0 });
+  const [stats, setStats] = useState<DashboardStats>({ total: 0, emReparo: 0, prontas: 0, atrasadas: 0, faturamento: 0 });
   const [vendaModal, setVendaModal] = useState(false);
   const [faturamentoModal, setFaturamentoModal] = useState(false);
   const { data: session } = useSession();
   const router = useRouter();
-  const shopId = (session?.user as any)?.shopId;
+
+  const shopId  = (session?.user as any)?.shopId;
+  const userName = (session?.user as any)?.name ?? (session?.user as any)?.email ?? "";
 
   async function recarregarStats() {
-    if (shopId) { const data = await fetchDashboardData(shopId); setStats(data); }
+    if (shopId) {
+      const data = await fetchDashboardData(shopId);
+      setStats(data);
+    }
   }
 
   useEffect(() => { recarregarStats(); }, [shopId]);
@@ -972,59 +1170,20 @@ export default function DashboardPage() {
   }
 
   const tabs = [
-    { id: "dashboard" as Tab, label: "Dashboard", icon: LayoutDashboard },
-    { id: "os" as Tab, label: "Ordens de Serviço", icon: Wrench },
-    { id: "estoque" as Tab, label: "Estoque", icon: Package },
-    { id: "imei" as Tab, label: "Consulta IMEI", icon: Smartphone },
-    { id: "configuracoes" as Tab, label: "Configurações", icon: Settings },
+    { id: "dashboard"     as Tab, label: "Dashboard",         icon: LayoutDashboard },
+    { id: "os"            as Tab, label: "Ordens de Serviço", icon: Wrench          },
+    { id: "estoque"       as Tab, label: "Estoque",           icon: Package         },
+    { id: "imei"          as Tab, label: "Consulta IMEI",     icon: Smartphone      },
+    { id: "configuracoes" as Tab, label: "Configurações",     icon: Settings        },
   ];
 
   const tabSubtitles: Record<Tab, string> = {
-    dashboard: "Visão geral da operação",
-    os: "Gerencie todas as ordens de serviço",
-    estoque: "Controle seu inventário de peças",
-    imei: "Valide e consulte dispositivos",
+    dashboard:     "Visão geral da operação",
+    os:            "Gerencie todas as ordens de serviço",
+    estoque:       "Controle seu inventário de peças",
+    imei:          "Valide e consulte dispositivos",
     configuracoes: "Personalize sua conta",
   };
-
-  const metricCards = [
-    {
-      label: "Total de OS",
-      value: stats.total.toString(),
-      sub: "ordens cadastradas",
-      icon: Wrench,
-      colorClass: "rf-metric-teal",
-      iconBg: "var(--teal-dim)",
-      iconColor: "var(--teal-light)",
-      valueColor: "var(--rf-text)",
-      badge: null,
-      onClick: undefined,
-    },
-    {
-      label: "Em Reparo",
-      value: stats.emReparo.toString(),
-      sub: "em andamento agora",
-      icon: Activity,
-      colorClass: "rf-metric-violet",
-      iconBg: "var(--violet-dim)",
-      iconColor: "var(--violet)",
-      valueColor: "var(--rf-text)",
-      badge: stats.atrasadas > 0 ? `${stats.atrasadas} atrasada${stats.atrasadas > 1 ? "s" : ""}` : null,
-      onClick: undefined,
-    },
-    {
-      label: "Faturamento",
-      value: `R$ ${stats.faturamento.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      sub: "receita total acumulada",
-      icon: TrendingUp,
-      colorClass: "rf-metric-teal",
-      iconBg: "var(--teal-dim)",
-      iconColor: "var(--teal-light)",
-      valueColor: "var(--teal-light)",
-      badge: null,
-      onClick: () => setFaturamentoModal(true),
-    },
-  ];
 
   const mobileLabel: Record<Tab, string> = {
     dashboard: "Home", os: "OS", estoque: "Estoque", imei: "IMEI", configuracoes: "Config",
@@ -1034,55 +1193,40 @@ export default function DashboardPage() {
     <>
       <style>{GLOBAL_STYLES}</style>
 
-      <header
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 16px",
-          height: 60,
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
-          background: "rgba(6,6,8,0.92)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          borderBottom: "0.5px solid var(--rf-border)",
-        }}
-      >
+      {/* ── Header fixo ── */}
+      <header style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 16px", height: 60,
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+        background: "rgba(6,6,8,0.92)",
+        backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+        borderBottom: "0.5px solid var(--rf-border)",
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div className="rf-logo-mark" style={{ width: 26, height: 26, borderRadius: 7 }}><LogoIcon /></div>
           <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em" }}>RepairFlow</span>
         </div>
-        <button
-          onClick={() => setVendaModal(true)}
-          className="rf-btn-primary"
-          style={{ fontSize: 13, padding: "8px 16px", gap: 6 }}
-        >
+        <button onClick={() => setVendaModal(true)} className="rf-btn-primary" style={{ fontSize: 13, padding: "8px 16px", gap: 6 }}>
           <Zap size={14} />
           <span className="hidden sm:inline">Venda Rápida</span>
         </button>
       </header>
 
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--rf-bg)", paddingTop: "60px" }}>
-        {/* Banner de expiração — aparece abaixo do header fixo */}
         <ExpiryBanner />
         <div style={{ display: "flex", flex: 1 }}>
 
-          {/* Sidebar desktop */}
-          <aside
-            className="hidden md:flex"
-            style={{
-              width: "var(--sidebar-w)",
-              flexShrink: 0,
-              flexDirection: "column",
-              borderRight: "0.5px solid var(--rf-border)",
-              background: "var(--rf-surface)",
-            }}
-          >
+          {/* ── Sidebar desktop ── */}
+          <aside className="hidden md:flex" style={{
+            width: "var(--sidebar-w)", flexShrink: 0, flexDirection: "column",
+            borderRight: "0.5px solid var(--rf-border)", background: "var(--rf-surface)",
+          }}>
             <div style={{ padding: "20px 20px 10px" }}>
               <p style={{ fontSize: 10, color: "var(--rf-text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Gestão Interna</p>
             </div>
             <nav style={{ flex: 1, padding: "0px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
               {tabs.map((item) => (
-                <button key={item.id} onClick={() => setActiveTab(item.id)}
-                  className={`rf-nav-item ${activeTab === item.id ? "active" : ""}`}>
+                <button key={item.id} onClick={() => setActiveTab(item.id)} className={`rf-nav-item ${activeTab === item.id ? "active" : ""}`}>
                   <item.icon size={15} />
                   {item.label}
                   {activeTab === item.id && <span className="nav-dot" />}
@@ -1091,26 +1235,18 @@ export default function DashboardPage() {
             </nav>
           </aside>
 
-          {/* Main */}
-          <main
-            style={{ flex: 1, overflowX: "hidden", minHeight: "calc(100vh - 60px)" }}
-            className="pb-24 md:pb-0"
-          >
-            {/* Desktop sub-header */}
-            <div
-              className="hidden md:flex"
-              style={{
-                alignItems: "center", justifyContent: "space-between",
-                padding: "20px 32px",
-                borderBottom: "0.5px solid var(--rf-border)",
-                position: "sticky",
-                top: 0,
-                zIndex: 20,
-                background: "rgba(6,6,8,0.92)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-              }}
-            >
+          {/* ── Main ── */}
+          <main style={{ flex: 1, overflowX: "hidden", minHeight: "calc(100vh - 60px)" }} className="pb-24 md:pb-0">
+
+            {/* Sub-header desktop */}
+            <div className="hidden md:flex" style={{
+              alignItems: "center", justifyContent: "space-between",
+              padding: "20px 32px",
+              borderBottom: "0.5px solid var(--rf-border)",
+              position: "sticky", top: 0, zIndex: 20,
+              background: "rgba(6,6,8,0.92)",
+              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            }}>
               <div>
                 <h1 className="rf-title-gradient" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>
                   {tabs.find((t) => t.id === activeTab)?.label}
@@ -1119,16 +1255,14 @@ export default function DashboardPage() {
                   {tabSubtitles[activeTab]}
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {activeTab === "os" && (
-                  <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary" style={{ fontSize: 12 }}>
-                    <Plus size={14} /> Nova OS
-                  </button>
-                )}
-              </div>
+              {activeTab === "os" && (
+                <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary" style={{ fontSize: 12 }}>
+                  <Plus size={14} /> Nova OS
+                </button>
+              )}
             </div>
 
-            {/* Mobile page title */}
+            {/* Título mobile */}
             <div className="md:hidden" style={{ padding: "16px 16px 0" }}>
               <h1 className="rf-title-gradient" style={{ fontSize: 20, fontWeight: 600 }}>
                 {tabs.find((t) => t.id === activeTab)?.label}
@@ -1137,15 +1271,14 @@ export default function DashboardPage() {
                 {tabSubtitles[activeTab]}
               </p>
               {activeTab === "os" && (
-                <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary"
-                  style={{ fontSize: 12, marginTop: 12 }}>
+                <button onClick={() => router.push("/painel/nova-os")} className="rf-btn-primary" style={{ fontSize: 12, marginTop: 12 }}>
                   <Plus size={13} /> Nova OS
                 </button>
               )}
             </div>
 
-            {/* Content */}
-            <div style={{ padding: "24px 24px 32px" }} className="md:p-8">
+            {/* Conteúdo */}
+            <div style={{ padding: "24px 16px 32px" }} className="md:px-8 md:py-8">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -1154,111 +1287,27 @@ export default function DashboardPage() {
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.15 }}
                 >
-                  {/* Dashboard */}
-                  {activeTab === "dashboard" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-                        {metricCards.map((card, i) => (
-                          <motion.div
-                            key={card.label}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.06, duration: 0.2 }}
-                            onClick={card.onClick}
-                            className={`rf-metric ${card.colorClass} ${card.onClick ? "clickable" : ""}`}
-                          >
-                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-                              <div>
-                                <p style={{ fontSize: 10.5, color: "var(--rf-text-3)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                  {card.label}
-                                </p>
-                                {card.badge && (
-                                  <span className="rf-badge rf-badge-amber" style={{ marginTop: 4 }}>{card.badge}</span>
-                                )}
-                              </div>
-                              <div className="rf-icon-box" style={{ background: card.iconBg }}>
-                                <card.icon size={15} style={{ color: card.iconColor }} />
-                              </div>
-                            </div>
-                            <p style={{ fontSize: 26, fontWeight: 500, color: card.valueColor, letterSpacing: "-0.025em", marginBottom: 4 }}>
-                              {card.value}
-                            </p>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <p style={{ fontSize: 11.5, color: "var(--rf-text-3)" }}>{card.sub}</p>
-                              {card.onClick && (
-                                <ArrowUpRight size={13} style={{ color: "var(--rf-text-3)" }} />
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-                        {[
-                          {
-                            tab: "os" as Tab, icon: Wrench,
-                            label: "Ordens de Serviço",
-                            desc: "Gerencie e acompanhe reparos",
-                            accentColor: "var(--teal-light)",
-                            accentBg: "var(--teal-dim)",
-                            borderHover: "var(--teal-border)",
-                          },
-                          {
-                            tab: "estoque" as Tab, icon: Package,
-                            label: "Estoque",
-                            desc: "Produtos, capinhas e acessórios",
-                            accentColor: "var(--violet)",
-                            accentBg: "var(--violet-dim)",
-                            borderHover: "rgba(139,124,248,0.2)",
-                          },
-                        ].map(({ tab, icon: Icon, label, desc, accentColor, accentBg, borderHover }) => (
-                          <motion.button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2, duration: 0.2 }}
-                            className="rf-shortcut"
-                            style={{ textAlign: "left", border: "0.5px solid var(--rf-border)" }}
-                            onMouseEnter={e => (e.currentTarget.style.borderColor = borderHover)}
-                            onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--rf-border)")}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <div className="rf-icon-box" style={{ background: accentBg }}>
-                                <Icon size={15} style={{ color: accentColor }} />
-                              </div>
-                              <ChevronRight size={14} style={{ color: "var(--rf-text-3)" }} />
-                            </div>
-                            <div>
-                              <p style={{ fontSize: 14, fontWeight: 500, color: "var(--rf-text)" }}>{label}</p>
-                              <p style={{ fontSize: 12, color: "var(--rf-text-3)", marginTop: 3 }}>{desc}</p>
-                            </div>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </div>
+                  {activeTab === "dashboard" && shopId && (
+                    <DashboardTab
+                      stats={stats}
+                      shopId={shopId}
+                      nomeUsuario={userName}
+                      onNovaOS={() => router.push("/painel/nova-os")}
+                      onFaturamentoClick={() => setFaturamentoModal(true)}
+                    />
                   )}
 
-                  {/* OS */}
                   {activeTab === "os" && shopId && <OsTable shopId={shopId} onStatusChange={recarregarStats} />}
                   {activeTab === "os" && !shopId && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--rf-text-3)", fontSize: 13 }}>
-                      Aguardando sessão...
-                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--rf-text-3)", fontSize: 13 }}>Aguardando sessão...</div>
                   )}
 
-                  {/* Estoque */}
                   {activeTab === "estoque" && shopId && <StockTab shopId={shopId} />}
                   {activeTab === "estoque" && !shopId && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--rf-text-3)", fontSize: 13 }}>
-                      Aguardando sessão...
-                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200, color: "var(--rf-text-3)", fontSize: 13 }}>Aguardando sessão...</div>
                   )}
 
-                  {/* IMEI */}
                   {activeTab === "imei" && <ImeiTab />}
-
-                  {/* Config */}
                   {activeTab === "configuracoes" && <ConfiguracoesTab />}
                 </motion.div>
               </AnimatePresence>
@@ -1266,32 +1315,19 @@ export default function DashboardPage() {
           </main>
         </div>
 
-        {/* Bottom nav mobile */}
-        <nav
-          className="md:hidden rf-bottom-nav"
-          style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30, display: "flex" }}
-        >
+        {/* ── Bottom nav mobile ── */}
+        <nav className="md:hidden rf-bottom-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30, display: "flex" }}>
           {tabs.map((item) => {
             const isActive = activeTab === item.id;
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`rf-bottom-nav-btn ${isActive ? "active" : "inactive"}`}
-              >
+              <button key={item.id} onClick={() => setActiveTab(item.id)} className={`rf-bottom-nav-btn ${isActive ? "active" : "inactive"}`}>
                 {isActive && (
-                  <motion.div
-                    layoutId="tab-indicator"
-                    className="rf-nav-indicator"
-                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                  />
+                  <motion.div layoutId="tab-indicator" className="rf-nav-indicator" transition={{ type: "spring", stiffness: 400, damping: 35 }} />
                 )}
                 <div className="rf-nav-icon-wrap nav-icon">
                   <item.icon size={20} strokeWidth={isActive ? 2 : 1.75} />
                 </div>
-                <span className="nav-label">
-                  {mobileLabel[item.id]}
-                </span>
+                <span className="nav-label">{mobileLabel[item.id]}</span>
               </button>
             );
           })}
