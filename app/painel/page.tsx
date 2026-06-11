@@ -441,20 +441,19 @@ interface DashboardStats {
 function DashboardTab({
   stats,
   shopId,
-  nomeUsuario,
+  nomeAssistencia,
   onNovaOS,
   onFaturamentoClick,
 }: {
   stats: DashboardStats;
   shopId: string;
-  nomeUsuario: string;
+  nomeAssistencia: string;
   onNovaOS: () => void;
   onFaturamentoClick: () => void;
 }) {
   const router = useRouter();
   const hasData = stats.total > 0;
 
-  // Métricas derivadas — estrutura preparada para dados reais futuros
   const ticketMedio = stats.faturamento > 0 && stats.total > 0
     ? stats.faturamento / stats.total
     : 0;
@@ -463,8 +462,6 @@ function DashboardTab({
     ? Math.round(((stats.total - stats.emReparo) / stats.total) * 100)
     : 0;
 
-  // Dados simulados para atividade recente — estrutura pronta para API real
-  // Quando a API existir, substituir este array pelo fetch real
   const atividadesRecentes: Array<{
     nome: string;
     servico: string;
@@ -571,7 +568,7 @@ function DashboardTab({
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--rf-text)", marginBottom: 6 }}>
-              {saudacao(nomeUsuario)}
+              {saudacao(nomeAssistencia)}
             </h2>
             <p style={{ fontSize: 13.5, color: "var(--rf-text-2)", lineHeight: 1.5 }}>
               {resumoOperacao(stats.emReparo, stats.prontas)}
@@ -1148,13 +1145,14 @@ function ImeiTab() {
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [stats, setStats] = useState<DashboardStats>({ total: 0, emReparo: 0, prontas: 0, atrasadas: 0, faturamento: 0 });
+  // ✅ CORREÇÃO: nome da assistência técnica vindo do banco, não da sessão
+  const [shopName, setShopName] = useState("");
   const [vendaModal, setVendaModal] = useState(false);
   const [faturamentoModal, setFaturamentoModal] = useState(false);
   const { data: session } = useSession();
   const router = useRouter();
 
-  const shopId  = (session?.user as any)?.shopId;
-  const userName = (session?.user as any)?.name ?? (session?.user as any)?.email ?? "";
+  const shopId = (session?.user as any)?.shopId;
 
   async function recarregarStats() {
     if (shopId) {
@@ -1163,7 +1161,17 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { recarregarStats(); }, [shopId]);
+  useEffect(() => {
+    if (!shopId) return;
+
+    // Carrega stats e nome da assistência em paralelo
+    recarregarStats();
+
+    // ✅ CORREÇÃO: busca o nome da shop no banco de dados
+    getShopSettings()
+      .then((shop) => setShopName(shop.name ?? ""))
+      .catch(() => {});
+  }, [shopId]);
 
   function handleVendaRealizada(lucro: number, total: number) {
     setStats((prev) => ({ ...prev, faturamento: prev.faturamento + total }));
@@ -1291,7 +1299,8 @@ export default function DashboardPage() {
                     <DashboardTab
                       stats={stats}
                       shopId={shopId}
-                      nomeUsuario={userName}
+                      // ✅ CORREÇÃO: usa shopName (banco) em vez de userName (sessão)
+                      nomeAssistencia={shopName}
                       onNovaOS={() => router.push("/painel/nova-os")}
                       onFaturamentoClick={() => setFaturamentoModal(true)}
                     />
