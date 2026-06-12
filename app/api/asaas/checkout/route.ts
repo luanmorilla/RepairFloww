@@ -13,9 +13,6 @@ export async function POST(request: Request) {
   const ASAAS_API = process.env.ASAAS_API_URL || "https://www.asaas.com/api/v3";
   const ASAAS_KEY = process.env.ASAAS_API_KEY;
 
-  console.log("ENV CHECK:", Object.keys(process.env).filter(k => k.includes("ASAAS")));
-  console.log("KEY:", process.env.ASAAS_API_KEY?.slice(0, 10));
-
   if (!ASAAS_KEY) {
     console.error("❌ ASAAS_API_KEY não configurada nas variáveis de ambiente");
     return NextResponse.json(
@@ -44,14 +41,6 @@ export async function POST(request: Request) {
       include: { shop: true },
     });
 
-    console.log("👤 Usuário encontrado:", {
-      id: user?.id,
-      email: user?.email,
-      temShop: !!user?.shop,
-      cpfCnpj: user?.cpfCnpj ? "✅ presente" : "❌ ausente",
-      asaasCustomerId: user?.shop?.asaasCustomerId ?? "não cadastrado",
-    });
-
     if (!user?.shop) {
       return NextResponse.json({ error: "Loja não encontrada" }, { status: 404 });
     }
@@ -69,42 +58,45 @@ export async function POST(request: Request) {
 
     let asaasCustomerId = user.shop.asaasCustomerId;
 
-    if (!asaasCustomerId) {
+    const criarCliente = async () => {
       console.log("🆕 Criando novo cliente no Asaas...");
-
       const clienteRes = await fetch(`${ASAAS_API}/customers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "access_token": ASAAS_KEY,
+          "access_token": ASAAS_KEY!,
         },
         body: JSON.stringify({
           name: user.name ?? user.email,
           email: user.email,
-          externalReference: user.shop.id,
+          externalReference: user.shop!.id,
           cpfCnpj: cpfLimpo,
         }),
       });
 
       const clienteText = await clienteRes.text();
       console.log("ASAAS CLIENTE status:", clienteRes.status);
-      console.log("ASAAS CLIENTE body:", clienteText);
 
       if (!clienteRes.ok) {
-        return NextResponse.json({ error: "Erro ao criar cliente no Asaas" }, { status: 500 });
+        throw new Error("Erro ao criar cliente no Asaas");
       }
 
       const customer = JSON.parse(clienteText);
       if (!customer.id) {
-        return NextResponse.json({ error: "Erro ao criar cliente no Asaas" }, { status: 500 });
+        throw new Error("Erro ao criar cliente no Asaas: ID ausente");
       }
 
-      asaasCustomerId = customer.id;
       await prisma.shop.update({
-        where: { id: user.shop.id },
-        data: { asaasCustomerId },
+        where: { id: user.shop!.id },
+        data: { asaasCustomerId: customer.id },
       });
-      console.log("✅ Cliente Asaas criado:", asaasCustomerId);
+
+      console.log("✅ Cliente Asaas criado:", customer.id);
+      return customer.id as string;
+    };
+
+    if (!asaasCustomerId) {
+      asaasCustomerId = await criarCliente();
     } else {
       console.log("♻️ Reutilizando cliente:", asaasCustomerId);
     }
@@ -128,26 +120,47 @@ export async function POST(request: Request) {
 
     console.log("📝 Criando assinatura:", { customer: asaasCustomerId, billingType, value: plano.valor });
 
-    const assinaturaRes = await fetch(`${ASAAS_API}/subscriptions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "access_token": ASAAS_KEY,
-      },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType,
-        value: plano.valor,
-        nextDueDate,
-        cycle: plano.ciclo,
-        description: `RepairFlow - Plano ${tipo}`,
-        externalReference: user.shop.id,
-      }),
-    });
+    const criarAssinatura = async (customerId: string) => {
+      return fetch(`${ASAAS_API}/subscriptions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "access_token": ASAAS_KEY!,
+        },
+        body: JSON.stringify({
+          customer: customerId,
+          billingType,
+          value: plano.valor,
+          nextDueDate,
+          cycle: plano.ciclo,
+          description: `RepairFlow - Plano ${tipo}`,
+          externalReference: user.shop!.id,
+        }),
+      });
+    };
 
-    const assinaturaText = await assinaturaRes.text();
+    let assinaturaRes = await criarAssinatura(asaasCustomerId);
+    let assinaturaText = await assinaturaRes.text();
     console.log("ASAAS ASSINATURA status:", assinaturaRes.status);
-    console.log("ASAAS ASSINATURA body:", assinaturaText);
+
+    if (assinaturaRes.status === 400) {
+      const errBody = JSON.parse(assinaturaText);
+      const clienteRemovido = errBody.errors?.some((e: any) => e.code === "invalid_object");
+
+      if (clienteRemovido) {
+        console.log("⚠️ Cliente removido no Asaas, recriando...");
+
+        await prisma.shop.update({
+          where: { id: user.shop.id },
+          data: { asaasCustomerId: null, asaasSubscriptionId: null },
+        });
+
+        asaasCustomerId = await criarCliente();
+        assinaturaRes = await criarAssinatura(asaasCustomerId);
+        assinaturaText = await assinaturaRes.text();
+        console.log("ASAAS ASSINATURA (retry) status:", assinaturaRes.status);
+      }
+    }
 
     if (!assinaturaRes.ok) {
       return NextResponse.json({ error: "Erro ao criar assinatura no Asaas" }, { status: 500 });
@@ -173,7 +186,6 @@ export async function POST(request: Request) {
 
     const cobrancaText = await cobrancaRes.text();
     console.log("ASAAS COBRANÇA status:", cobrancaRes.status);
-    console.log("ASAAS COBRANÇA body:", cobrancaText);
 
     if (!cobrancaRes.ok) {
       return NextResponse.json({ error: "Erro ao buscar cobrança" }, { status: 500 });
@@ -197,7 +209,6 @@ export async function POST(request: Request) {
 
       const pixText = await pixRes.text();
       console.log("ASAAS PIX status:", pixRes.status);
-      console.log("ASAAS PIX body:", pixText);
 
       if (!pixRes.ok) {
         return NextResponse.json({ error: "Erro ao gerar QR Code PIX" }, { status: 500 });
